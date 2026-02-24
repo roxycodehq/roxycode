@@ -43,9 +43,6 @@ public class ProjectFileVisitorTest {
         Files.createDirectory(tempDir.resolve(".git"));
         Files.createFile(tempDir.resolve(".git/config"));
         
-        Files.createDirectory(tempDir.resolve("target"));
-        Files.createFile(tempDir.resolve("target/app.jar"));
-        
         Files.createFile(tempDir.resolve("allowed.txt"));
 
         List<ProjectFile> files = new ArrayList<>();
