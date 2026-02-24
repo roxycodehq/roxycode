@@ -7,17 +7,29 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class XmlSmashFormatterTest {
+class XmlSmashFormatterTest {
     @Test
-    public void testFormat() {
+    void testFormat() {
         XmlSmashFormatter formatter = new XmlSmashFormatter();
         List<ProjectFile> files = List.of(
-            new ProjectFile("test.txt", "Hello World")
+            new ProjectFile("src/Main.java", "public class Main {}"),
+            new ProjectFile("README.md", "# Hello"),
+            new ProjectFile("AGENTS.md", "Agent instructions here")
         );
-        String result = formatter.format(files);
-        
-        assertTrue(result.contains("<total_files>1</total_files>"));
-        assertTrue(result.contains("test.txt"));
-        assertTrue(result.contains("Hello World"));
+
+        String output = formatter.format(files);
+
+        // Check for summary section
+        assertTrue(output.contains("<summary>"));
+        assertTrue(output.contains("<agent_instructions>"));
+        assertTrue(output.contains("Agent instructions here"));
+
+        // Check integrated tree structure
+        assertTrue(output.contains("<project_tree>"));
+        assertTrue(output.contains("<d n=\"src\">"));
+        assertTrue(output.contains("<f n=\"Main.java\">"));
+        assertTrue(output.contains("public class Main {}"));
+        assertTrue(output.contains("<f n=\"README.md\">"));
+        assertTrue(output.contains("# Hello"));
     }
 }

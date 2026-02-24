@@ -3,8 +3,12 @@ package org.roxycode.jsmashy.formatters;
 import org.roxycode.jsmashy.core.ProjectFile;
 import org.roxycode.jsmashy.core.SmashFormatter;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class XmlSmashFormatter implements SmashFormatter {
     @Override
@@ -12,35 +16,83 @@ public class XmlSmashFormatter implements SmashFormatter {
         StringBuilder sb = new StringBuilder();
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         sb.append("<codebase>\n");
-        
-        // Summary section
-        sb.append("  <summary>\n");
-        sb.append("    <total_files>").append(files.size()).append("</total_files>\n");
-        sb.append("  </summary>\n");
 
-        // Structure section (Simplified tree)
-        sb.append("  <repository_structure>\n<![CDATA[\n");
-        sb.append(generateTree(files));
-        sb.append("\n]]>\n  </repository_structure>\n");
+        appendFileSummary(sb, files);
+        appendProjectTree(sb, files);
 
-        // Files section
-        for (ProjectFile file : files) {
-            sb.append("  <file path=\"").append(file.getPath()).append("\">\n");
-            sb.append("    <content><![CDATA[");
-            // Basic CDATA escape logic if needed, but standard CDATA handles most
-            sb.append(file.getContent().replace("]]>", "]]]]><![CDATA[>"));
-            sb.append("]]></content>\n");
-            sb.append("  </file>\n");
-        }
-        
         sb.append("</codebase>");
         return sb.toString();
     }
 
-    private String generateTree(List<ProjectFile> files) {
-        return files.stream()
-                .map(ProjectFile::getPath)
-                .sorted()
-                .collect(Collectors.joining("\n"));
+    private void appendFileSummary(StringBuilder sb, List<ProjectFile> files) {
+        sb.append("<summary>\n");
+        sb.append("<agent_instructions>\n");
+        sb.append("The <project_tree> section shows the directory hierarchy.\n");
+        sb.append("<d n=\"name\"> is a directory, <f n=\"name\"> is a file containing CDATA content.\n");
+        sb.append("</agent_instructions>\n");
+
+        // AGENTS.md extraction
+        for (ProjectFile file : files) {
+            if (file.getPath().equalsIgnoreCase("AGENTS.md")) {
+                sb.append("<agent_custom_instructions>\n<![CDATA[\n");
+                sb.append(file.getContent().replace("]]>", "]]]]><![CDATA[>"));
+                sb.append("\n]]>\n</agent_custom_instructions>\n");
+                break;
+            }
+        }
+
+        sb.append("</summary>\n\n");
+    }
+
+    private void appendProjectTree(StringBuilder sb, List<ProjectFile> files) {
+        TreeNode root = new TreeNode("");
+        for (ProjectFile file : files) {
+            String[] parts = file.getPath().replace('\\', '/').split("/");
+            TreeNode current = root;
+            for (int i = 0; i < parts.length; i++) {
+                String part = parts[i];
+                if (part.isEmpty()) continue;
+                current = current.children.computeIfAbsent(part, k -> new TreeNode(k));
+                if (i == parts.length - 1) {
+                    current.file = file;
+                }
+            }
+        }
+
+        sb.append("<project_tree>\n");
+        renderXmlTree(root, "", sb);
+        sb.append("</project_tree>\n");
+    }
+
+    private void renderXmlTree(TreeNode node, String indent, StringBuilder sb) {
+        List<String> sortedKeys = new ArrayList<>(node.children.keySet());
+        Collections.sort(sortedKeys);
+        
+        for (String key : sortedKeys) {
+            TreeNode child = node.children.get(key);
+            if (child.file != null) {
+                // It's a file
+                sb.append(indent).append("<f n=\"").append(key).append("\">");
+                sb.append("<![CDATA[");
+                sb.append(child.file.getContent().replace("]]>", "]]]]><![CDATA[>"));
+                sb.append("]]>");
+                sb.append("</f>\n");
+            } else {
+                // It's a directory
+                sb.append(indent).append("<d n=\"").append(key).append("\">\n");
+                renderXmlTree(child, indent + "  ", sb);
+                sb.append(indent).append("</d>\n");
+            }
+        }
+    }
+
+    private static class TreeNode {
+        String name;
+        ProjectFile file;
+        Map<String, TreeNode> children = new HashMap<>();
+
+        TreeNode(String name) {
+            this.name = name;
+        }
     }
 }
