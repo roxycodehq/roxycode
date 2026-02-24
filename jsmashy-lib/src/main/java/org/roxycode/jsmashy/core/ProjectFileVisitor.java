@@ -36,7 +36,7 @@ public class ProjectFileVisitor extends SimpleFileVisitor<Path> {
     private boolean isIgnored(Path path, boolean isDir) {
         String name = path.getFileName() != null ? path.getFileName().toString() : "";
         // Hardcoded defaults
-        if (name.equals(".git") || name.equals("target")) return true;
+        if (name.equals(".git")) return true;
 
         for (IgnoreEntry entry : ignoreStack) {
             try {
