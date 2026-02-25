@@ -20,6 +20,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <javafx.version>21</javafx.version>
+            <antlr.version>4.13.2</antlr.version>
     </properties>
 
     <dependencyManagement>
