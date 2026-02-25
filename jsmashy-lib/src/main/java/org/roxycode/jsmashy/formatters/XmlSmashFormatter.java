@@ -1,16 +1,15 @@
 package org.roxycode.jsmashy.formatters;
 
-import org.roxycode.jsmashy.core.ProjectFile;
-import org.roxycode.jsmashy.core.SmashFormatter;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import org.roxycode.jsmashy.core.ProjectFile;
+import org.roxycode.jsmashy.core.SmashFormatter;
 
 public class XmlSmashFormatter implements SmashFormatter {
+
     @Override
     public String format(List<ProjectFile> files) {
         StringBuilder sb = new StringBuilder();
@@ -51,7 +50,9 @@ public class XmlSmashFormatter implements SmashFormatter {
             TreeNode current = root;
             for (int i = 0; i < parts.length; i++) {
                 String part = parts[i];
-                if (part.isEmpty()) continue;
+                if (part.isEmpty()) {
+                    continue;
+                }
                 current = current.children.computeIfAbsent(part, k -> new TreeNode(k));
                 if (i == parts.length - 1) {
                     current.file = file;
@@ -67,7 +68,7 @@ public class XmlSmashFormatter implements SmashFormatter {
     private void renderXmlTree(TreeNode node, String indent, StringBuilder sb) {
         List<String> sortedKeys = new ArrayList<>(node.children.keySet());
         Collections.sort(sortedKeys);
-        
+
         for (String key : sortedKeys) {
             TreeNode child = node.children.get(key);
             if (child.file != null) {
@@ -87,6 +88,7 @@ public class XmlSmashFormatter implements SmashFormatter {
     }
 
     private static class TreeNode {
+
         String name;
         ProjectFile file;
         Map<String, TreeNode> children = new HashMap<>();
