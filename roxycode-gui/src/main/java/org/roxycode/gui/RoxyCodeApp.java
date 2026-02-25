@@ -1,23 +1,42 @@
 package org.roxycode.gui;
 
+import io.micronaut.context.ApplicationContext;
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
+import java.io.IOException;
+
 public class RoxyCodeApp extends Application {
+    private ApplicationContext context;
+
     @Override
-    public void start(Stage stage) {
-        String javaVersion = System.getProperty("java.version");
-        String javafxVersion = System.getProperty("javafx.version");
-        Label l = new Label("Hello, JavaFX " + javafxVersion + ", running on Java " + javaVersion + ".");
-        Scene scene = new Scene(new StackPane(l), 640, 480);
+    public void init() {
+        context = ApplicationContext.run();
+    }
+
+    @Override
+    public void start(Stage stage) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/roxycode/gui/main.fxml"));
+        loader.setControllerFactory(context::getBean);
+        
+        Parent root = loader.load();
+        Scene scene = new Scene(root, 640, 480);
+        stage.setTitle("RoxyCode GUI");
         stage.setScene(scene);
         stage.show();
     }
 
+    @Override
+    public void stop() {
+        if (context != null) {
+            context.close();
+        }
+    }
+
     public static void main(String[] args) {
-        launch();
+        launch(args);
     }
 }

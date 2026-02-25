@@ -21,6 +21,7 @@
         <maven.compiler.target>21</maven.compiler.target>
         <javafx.version>21</javafx.version>
             <antlr.version>4.13.2</antlr.version>
+        <micronaut.version>3.10.3</micronaut.version>
     </properties>
 
     <dependencyManagement>
@@ -54,6 +55,13 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>1.4.11</version>
+            </dependency>
+                    <dependency>
+                <groupId>io.micronaut</groupId>
+                <artifactId>micronaut-bom</artifactId>
+                <version>${micronaut.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
