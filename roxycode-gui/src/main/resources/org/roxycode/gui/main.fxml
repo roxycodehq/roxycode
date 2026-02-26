@@ -32,6 +32,11 @@
                     <SVGPath content="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" styleClass="svg-icon" scaleX="0.8" scaleY="0.8"/>
                 </graphic>
             </Button>
+            <Button fx:id="cachesNavButton" text="Caches" onAction="#showCaches" styleClass="nav-button">
+                <graphic>
+                    <SVGPath content="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z" styleClass="svg-icon" scaleX="0.8" scaleY="0.8"/>
+                </graphic>
+            </Button>
             
             <Button fx:id="settingsNavButton" text="Settings" onAction="#showSettings" styleClass="nav-button">
                 <graphic>

@@ -12,7 +12,7 @@ import javafx.scene.layout.VBox;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.util.prefs.Preferences;
 
 @Prototype

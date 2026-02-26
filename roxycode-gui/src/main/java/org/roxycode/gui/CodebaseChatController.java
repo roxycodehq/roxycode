@@ -18,7 +18,7 @@ import javafx.stage.Stage;
 import org.roxycode.jsmashy.core.ProjectFile;
 import org.roxycode.jsmashy.core.RepositoryScanner;
 import org.roxycode.jsmashy.formatters.XmlSmashFormatter;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -67,7 +67,8 @@ public class CodebaseChatController {
     }
 
     private void addMessage(String sender, String text) {
-        String htmlContent = markdownRenderer.render(text).replace("'", "\\'").replace("\n", "\\n").replace("\r", "");
+        // Correctly escape for JS string literal and HTML injection
+        String htmlContent = markdownRenderer.render(text).replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
         String containerClass = "message-container ";
         String bubbleClass = "bubble ";
         if ("User".equals(sender)) {
@@ -79,13 +80,12 @@ public class CodebaseChatController {
         } else {
             bubbleClass += "system-bubble";
         }
-        // Use string concatenation instead of String.format to avoid issues with % signs in content.
-        // Wrap in IIFE and rename 'history' to 'historyElement' to avoid collision with window.history.
-        String script = "(function() {" + "var historyElement = document.getElementById('chat-history');" + "var container = document.createElement('div');" + "container.className = '" + containerClass + "';" + "container.innerHTML = '<div class=\"" + bubbleClass + "\">" + htmlContent + "</div>';" + "if (historyElement) { historyElement.appendChild(container); }" + "hljs.highlightAll();" + "window.scrollTo(0, document.body.scrollHeight);" + "})();";
+        String script = "(function() {" + "var historyElement = document.getElementById('chat-history');" + "var container = document.createElement('div');" + "container.className = '" + containerClass + "';" + "container.innerHTML = '<div class=\"" + bubbleClass + "\">' + '" + htmlContent + "' + '</div>';" + "if (historyElement) { historyElement.appendChild(container); }" + "if (typeof hljs !== 'undefined') { hljs.highlightAll(); }" + "window.scrollTo(0, document.body.scrollHeight);" + "})();";
         Platform.runLater(() -> {
             try {
                 webEngine.executeScript(script);
             } catch (Exception e) {
+                System.err.println("Error executing script: " + e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -123,7 +123,7 @@ public class CodebaseChatController {
                 XmlSmashFormatter formatter = new XmlSmashFormatter();
                 String xml = formatter.format(files);
                 Platform.runLater(() -> statusLabel.setText("Status: Caching..."));
-                CachedContent cache = geminiService.createCodebaseCache(xml);
+                CachedContent cache = geminiService.createCodebaseCache(xml, selectedDirectory.getName());
                 chat = geminiService.startChat(cache.name().get());
                 Platform.runLater(() -> {
                     statusLabel.setText("Status: Cached");
@@ -145,8 +145,13 @@ public class CodebaseChatController {
     @FXML
     private void handleSendMessage() {
         String input = chatInput.getText();
-        if (input == null || input.trim().isEmpty() || chat == null)
+        if (input == null || input.trim().isEmpty()) {
             return;
+        }
+        if (chat == null) {
+            addMessage("System", "Please select a folder and click 'Cache Codebase' before chatting.");
+            return;
+        }
         chatInput.clear();
         addMessage("User", input);
         statusLabel.setText("Status: Thinking...");
@@ -159,9 +164,10 @@ public class CodebaseChatController {
                     statusLabel.setText("Status: Ready");
                 });
             } catch (Exception e) {
+                String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
                 Platform.runLater(() -> {
-                    addMessage("Error", e.getMessage());
-                    statusLabel.setText("Status: Ready");
+                    addMessage("Error", "Gemini Error: " + errorMessage);
+                    statusLabel.setText("Status: Error");
                 });
             }
         });
