@@ -23,8 +23,9 @@ public class RepositoryScanner {
 
     public List<ProjectFile> scan(Path rootDir) throws IOException {
         logger.info("Starting repository scan: {}", rootDir);
+        Path absoluteRoot = rootDir.toAbsolutePath().normalize();
         List<ProjectFile> files = new ArrayList<>();
-        Files.walkFileTree(rootDir, new ProjectFileVisitor(rootDir, files, analyzers));
+        Files.walkFileTree(absoluteRoot, new ProjectFileVisitor(absoluteRoot, files, analyzers));
         logger.info("Scan complete. Found {} files.", files.size());
         return files;
     }

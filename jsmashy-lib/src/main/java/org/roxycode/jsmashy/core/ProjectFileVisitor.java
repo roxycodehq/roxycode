@@ -111,7 +111,13 @@ public class ProjectFileVisitor extends SimpleFileVisitor<Path> {
         }
         
         String relativePath = rootDir.relativize(file).toString();
-        String content = Files.readString(file);
+        String content;
+        try {
+            content = Files.readString(file);
+        } catch (IOException e) {
+            logger.warn("Skipping file due to read error (possibly binary): {} - {}", relativePath, e.getMessage());
+            return FileVisitResult.CONTINUE;
+        }
         String fileName = file.getFileName().toString();
 
         if (analyzers != null) {

@@ -39,4 +39,20 @@ public class RepositoryScannerTest {
         assertEquals(1, files.size());
         assertFalse(files.get(0).getContent().contains("/* implementation omitted */"));
     }
+
+    @Test
+    public void testSkipBinaryFiles() throws IOException {
+        // Create a binary file with invalid UTF-8 (0xFF is not a valid start byte in UTF-8)
+        byte[] binaryData = new byte[] { (byte)0xFF, (byte)0xFE, (byte)0xFD };
+        Files.write(tempDir.resolve("binary.dat"), binaryData);
+        
+        RepositoryScanner scanner = new RepositoryScanner();
+        // This should not throw an exception after the fix
+        List<ProjectFile> files = scanner.scan(tempDir);
+        
+        // Ensure the binary file was skipped but the scan finished
+        boolean foundBinary = files.stream().anyMatch(f -> f.getPath().equals("binary.dat"));
+        assertFalse(foundBinary, "Binary file should be skipped");
+    }
+
 }

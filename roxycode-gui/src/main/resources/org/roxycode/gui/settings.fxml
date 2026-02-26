@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20" xmlns:fx="http://javafx.com/fxml" fx:controller="org.roxycode.gui.SettingsController" 
+      styleClass="chat-container">
+    <Label text="Application Settings" styleClass="settings-section-title"/>
+    
+    <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
+        <tabs>
+            <Tab text="Gemini AI">
+                <content>
+                    <VBox spacing="15">
+                        <padding>
+                            <Insets top="20" right="10" bottom="20" left="10"/>
+                        </padding>
+                        
+                        <VBox spacing="5">
+                            <Label text="API Key" styleClass="status-label"/>
+                            <PasswordField fx:id="apiKeyField" promptText="Enter your Gemini API Key" styleClass="modern-text-field"/>
+                        </VBox>
+                        
+                        <VBox spacing="5">
+                            <Label text="Model Selection" styleClass="status-label"/>
+                            <ComboBox fx:id="modelComboBox" maxWidth="Infinity" styleClass="modern-text-field"/>
+                        </VBox>
+                        
+                        <VBox fx:id="modelDetailsBox" spacing="8" styleClass="model-details-box">
+                            <Label fx:id="modelDescriptionLabel" wrapText="true" />
+                            <Label fx:id="modelPricingLabel" />
+                        </VBox>
+                    </VBox>
+                </content>
+            </Tab>
+        </tabs>
+    </TabPane>
+    
+    <HBox spacing="15" alignment="CENTER_RIGHT">
+        <Button text="Cancel" onAction="#handleCancel" styleClass="modern-button, secondary-button"/>
+        <Button text="Save Changes" onAction="#handleSave" defaultButton="true" styleClass="modern-button"/>
+    </HBox>
+</VBox>

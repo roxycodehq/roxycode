@@ -1,0 +1,32 @@
+# Gemini API Pricing (per 1,000,000 tokens)
+[gemini_3_pro_preview]
+api_name = "models/gemini-3-pro-preview"
+input_price_per_1m = 1.00
+cached_price_per_1m = 0.40
+cache_storage_price_per_1m_per_hour = 0.045
+output_price_per_1m = 6.00
+description = "Reasoning-first model; caching recommended for active, long-context agent sessions."
+
+[gemini_3_flash_preview]
+api_name = "models/gemini-3-flash-preview"
+input_price_per_1m = 0.25
+cached_price_per_1m = 0.05
+cache_storage_price_per_1m_per_hour = 0.01
+output_price_per_1m = 1.50
+description = "Designed for complex multimodal understanding and reasoning."
+
+[gemini_2_5_pro]
+api_name = "models/gemini-2.5-pro"
+input_price_per_1m = 1.25
+cached_price_per_1m = 0.625
+cache_storage_price_per_1m_per_hour = 0.045
+output_price_per_1m = 10.00
+description = "High-capability model for complex reasoning and coding."
+
+[gemini_2_5_flash]
+api_name = "models/gemini-2.5-flash"
+input_price_per_1m = 0.15
+cached_price_per_1m = 0.03
+cache_storage_price_per_1m_per_hour = 0.01
+output_price_per_1m = 0.60
+description = "Workhorse model balancing intelligence and latency."
