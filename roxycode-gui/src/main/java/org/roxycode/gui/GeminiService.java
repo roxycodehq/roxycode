@@ -108,6 +108,15 @@ public class GeminiService {
     public CachedContent getCache(String name) {
         return getClient().caches.get(name, GetCachedContentConfig.builder().build());
     }
+    /**
+     * Validates if a cache exists and is accessible.
+     * @param name the resource name of the cache
+     * @throws Exception if the cache is missing or inaccessible
+     */
+    public void validateCache(String name) throws Exception {
+        getCache(name);
+    }
+
 
     private List<Tool> getTools() {
         Map<String, Schema> properties = new HashMap<>();

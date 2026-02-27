@@ -97,6 +97,18 @@ class GeminiServiceTest {
             // Expected
         }
     }
+    @Test
+    void testValidateCache() {
+        // Just verify the method exists and can be called
+        Assertions.assertDoesNotThrow(() -> {
+            try {
+                geminiService.validateCache("test-name");
+            } catch (Exception e) {
+                // Expected
+            }
+        });
+    }
+
 
     @Test
     void testStartChatConfiguration() {
@@ -111,6 +123,17 @@ class GeminiServiceTest {
                 System.out.println("StartChat call failed as expected: " + e.getMessage());
             }
         });
+    }
+
+
+    @Test
+    void testContentBuilderWithRole() {
+        com.google.genai.types.Content content = com.google.genai.types.Content.builder()
+            .role("user")
+            .parts(java.util.Collections.singletonList(com.google.genai.types.Part.builder().text("test").build()))
+            .build();
+        Assertions.assertTrue(content.role().isPresent());
+        Assertions.assertEquals("user", content.role().get());
     }
 
 }

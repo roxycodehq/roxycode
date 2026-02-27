@@ -139,6 +139,7 @@ public class CodebaseChatController {
                 try {
                     String model = projectService.getCurrentCacheModel();
                     if (model == null) model = geminiService.getPrefs().get(SettingsController.GEMINI_MODEL, SettingsController.DEFAULT_MODEL);
+                    geminiService.validateCache(currentCache);
                     this.chat = geminiService.startChat(model, currentCache);
                     projectService.setActiveChat(this.chat);
                     Platform.runLater(() -> statusLabel.setText("Status: Ready"));
@@ -259,8 +260,17 @@ public class CodebaseChatController {
             public void onError(Throwable error) {
                 LOG.error("Error in handleSendMessage", error);
                 String errorMessage = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
+                
+                String userFriendlyMessage = "Gemini Error: " + errorMessage;
+                if (errorMessage.contains("403")) {
+                    userFriendlyMessage = "Permission denied (403). Your API key may have changed or the cache is tied to another key. Please re-cache the codebase.";
+                } else if (errorMessage.contains("404")) {
+                    userFriendlyMessage = "Cache not found (404). It may have expired. Please re-cache the codebase.";
+                }
+
+                final String finalMsg = userFriendlyMessage;
                 Platform.runLater(() -> {
-                    addMessage("Error", "Gemini Error: " + errorMessage, true);
+                    addMessage("Error", finalMsg, true);
                     statusLabel.setText("Status: Error");
                 });
             }
