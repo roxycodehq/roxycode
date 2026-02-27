@@ -4,6 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.genai.types.Content;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.StringProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,6 +25,9 @@ public class Agent {
     private final String systemPrompt;
     private final AgentRole role;
     private final int maxWindowSize;
+    private final IntegerProperty currentTurns = new SimpleIntegerProperty(0);
+    private final IntegerProperty historySize = new SimpleIntegerProperty(0);
+    private final StringProperty nameProperty = new SimpleStringProperty();
     private final Map<String, Object> session = new HashMap<>();
 
     private Agent(Builder builder) {
@@ -33,9 +41,31 @@ public class Agent {
 
     public String getId() { return id; }
     public String getName() { return name; }
+
+    @JsonIgnore
+    public StringProperty nameProperty() { 
+        if (nameProperty.get() == null) nameProperty.set(name);
+        return nameProperty; 
+    }
     public String getSystemPrompt() { return systemPrompt; }
     public AgentRole getRole() { return role; }
     public int getMaxWindowSize() { return maxWindowSize; }
+
+    @JsonIgnore
+    public IntegerProperty currentTurnsProperty() { return currentTurns; }
+
+    @JsonIgnore
+    public IntegerProperty historySizeProperty() { return historySize; }
+
+    @JsonIgnore
+    public int getCurrentTurns() { return currentTurns.get(); }
+
+    public void setCurrentTurns(int turns) { this.currentTurns.set(turns); }
+
+    @JsonIgnore
+    public int getHistorySize() { return historySize.get(); }
+
+    public void setHistorySize(int size) { this.historySize.set(size); }
     public Map<String, Object> getSession() { return session; }
 
     @SuppressWarnings("unchecked")

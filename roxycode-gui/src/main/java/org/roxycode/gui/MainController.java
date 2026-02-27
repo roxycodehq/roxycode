@@ -57,6 +57,9 @@ public class MainController {
     @FXML
     private Button cachesNavButton;
 
+    @FXML
+    private Button historyNavButton;
+
     @Inject
     private ApplicationContext context;
 
@@ -99,6 +102,12 @@ public class MainController {
         loadView("/org/roxycode/gui/cache-details.fxml");
     }
 
+    @FXML
+    public void showHistory() {
+        updateActiveNavButton(historyNavButton);
+        loadView("/org/roxycode/gui/agent-history.fxml");
+    }
+
     public void showChat() {
         updateActiveNavButton(chatNavButton);
         loadView("/org/roxycode/gui/codebase-chat.fxml");
@@ -120,7 +129,7 @@ public class MainController {
     }
 
     private void updateActiveNavButton(Button activeBtn) {
-        List<Button> buttons = Arrays.asList(chatNavButton, cachesNavButton, settingsNavButton);
+        List<Button> buttons = Arrays.asList(chatNavButton, historyNavButton, cachesNavButton, settingsNavButton);
         for (Button btn : buttons) {
             btn.getStyleClass().remove("active");
         }

@@ -29,6 +29,14 @@ class AgentSessionTest {
         history.add(createContent("model", "I am fine"));
         
         assertEquals(4, agent.getHistory().size());
+
+        agent.setCurrentTurns(2);
+        assertEquals(2, agent.getCurrentTurns());
+        assertEquals(2, agent.currentTurnsProperty().get());
+
+        agent.setHistorySize(10);
+        assertEquals(10, agent.getHistorySize());
+        assertEquals(10, agent.historySizeProperty().get());
     }
 
     private Content createContent(String role, String text) {

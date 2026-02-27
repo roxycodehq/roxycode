@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<HBox spacing="0" xmlns:fx="http://javafx.com/fxml" fx:controller="org.roxycode.gui.AgentHistoryController" 
+      styleClass="chat-container">
+    <VBox spacing="10" prefWidth="250" styleClass="sidebar-history">
+        <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+        <Label text="Active Agents" styleClass="settings-section-title"/>
+        <ListView fx:id="agentListView" VBox.vgrow="ALWAYS" styleClass="agent-list-view"/>
+    </VBox>
+    <VBox spacing="10" HBox.hgrow="ALWAYS">
+        <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+        <HBox spacing="15" alignment="CENTER_LEFT">
+             <Label fx:id="selectedAgentLabel" text="Select an agent to view history" styleClass="project-name"/>
+             <Region HBox.hgrow="ALWAYS" />
+             <Button text="Clear Local Session" onAction="#handleClearHistory" styleClass="modern-button, secondary-button">
+                <graphic><FontIcon iconLiteral="fas-trash-alt" iconSize="14"/></graphic>
+             </Button>
+        </HBox>
+        <TableView fx:id="historyTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="indexColumn" text="#" prefWidth="40" />
+                <TableColumn fx:id="roleColumn" text="Role" prefWidth="100" />
+                <TableColumn fx:id="contentColumn" text="Content" prefWidth="500" />
+            </columns>
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
+        </TableView>
+    </VBox>
+</HBox>

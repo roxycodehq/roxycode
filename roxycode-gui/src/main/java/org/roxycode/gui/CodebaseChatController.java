@@ -49,6 +49,15 @@ public class CodebaseChatController {
     @FXML
     private ComboBox<Agent> agentComboBox;
 
+    @FXML
+    private Label agentNameLabel;
+
+    @FXML
+    private Label turnsLabel;
+
+    @FXML
+    private Label historyLabel;
+
     @Inject
     private AgentService agentService;
 
@@ -94,8 +103,10 @@ public class CodebaseChatController {
                 restoreSession();
                 Platform.runLater(() -> {
                     agentComboBox.getItems().setAll(agentService.getAgents());
+                    agentComboBox.getSelectionModel().selectedItemProperty().addListener((agentObs, oldVal, newVal) -> bindAgentStatus(newVal));
                     if (!agentComboBox.getItems().isEmpty()) {
                         agentComboBox.getSelectionModel().select(0);
+                    bindAgentStatus(agentComboBox.getValue());
                     }
                 });
             }
@@ -150,6 +161,20 @@ public class CodebaseChatController {
     @EventListener
     public void onChatUsage(ChatUsageEvent event) {
         // Future use: display usage stats in UI
+    }
+
+    private void bindAgentStatus(Agent agent) {
+        if (agent == null) return;
+        agentNameLabel.textProperty().bind(agent.nameProperty()); // Wait, Agent name is String. I should use SimpleStringProperty if I want to bind it. But name is fixed. 
+        // Agent.java has getName() returning String. I should probably add nameProperty() or just set it once.
+        agentNameLabel.setText(agent.getName());
+        turnsLabel.textProperty().bind(agent.currentTurnsProperty().asString());
+        historyLabel.textProperty().bind(agent.historySizeProperty().asString());
+    }
+
+    @FXML
+    private void handleAgentChange() {
+        bindAgentStatus(agentComboBox.getValue());
     }
 
     @FXML

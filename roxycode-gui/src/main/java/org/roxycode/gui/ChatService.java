@@ -11,7 +11,7 @@ import jakarta.inject.Singleton;
 import org.roxycode.gui.events.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import javafx.application.Platform;
 import java.util.*;
 
 /**
@@ -19,6 +19,7 @@ import java.util.*;
  */
 @Singleton
 public class ChatService {
+
     private static final Logger LOG = LoggerFactory.getLogger(ChatService.class);
 
     @Inject
@@ -31,83 +32,64 @@ public class ChatService {
     public void execute(String userInput, Agent agent, Chat chat, int maxTurns) {
         try {
             eventPublisher.publishEvent(new ChatStatusEvent("Thinking...", true));
-
+            Platform.runLater(() -> agent.setCurrentTurns(0));
             List<Content> history = agent.getHistory();
-            
             // Prepare user input
             String currentInput = userInput;
             if (history.isEmpty()) {
-                currentInput = "Persona: " + agent.getName() + "\n" +
-                               "Instructions: " + agent.getSystemPrompt() + "\n\n" +
-                               "User Query: " + userInput;
+                currentInput = "Persona: " + agent.getName() + "\n" + "Instructions: " + agent.getSystemPrompt() + "\n\n" + "User Query: " + userInput;
             }
-
-            Content nextUserContent = Content.builder()
-                    .role("user")
-                    .parts(Collections.singletonList(Part.builder().text(currentInput).build()))
-                    .build();
-
+            Content nextUserContent = Content.builder().role("user").parts(Collections.singletonList(Part.builder().text(currentInput).build())).build();
             for (int turn = 0; turn < maxTurns; turn++) {
                 eventPublisher.publishEvent(new ChatStatusEvent("Turn " + (turn + 1) + "/" + maxTurns, true));
-                
+                final int currentTurn = turn + 1;
+                Platform.runLater(() -> {
+                    agent.setCurrentTurns(currentTurn);
+                    agent.setHistorySize(history.size());
+                });
                 // Add to agent history
                 history.add(nextUserContent);
                 trimHistory(history, agent.getMaxWindowSize());
-
-                // Sync with SDK Chat history if possible. 
+                // Sync with SDK Chat history if possible.
                 // Since we can't easily set history on the SDK Chat object after creation,
                 // we'll rely on the fact that sendMessage appends to it.
                 // Trimming the SDK chat history is harder.
-                
                 ResponseStream stream = chat.sendMessageStream(nextUserContent);
-
                 List<Part> aiParts = new ArrayList<>();
                 List<FunctionCall> aggregateCalls = new ArrayList<>();
                 processStream(stream, aggregateCalls, aiParts);
-                
                 // Add AI response to agent history
                 Content modelContent = Content.builder().role("model").parts(aiParts).build();
                 history.add(modelContent);
-
-                if (aggregateCalls.isEmpty()) break;
-
+                if (aggregateCalls.isEmpty())
+                    break;
                 List<Part> responseParts = new ArrayList<>();
                 for (FunctionCall call : aggregateCalls) {
                     String toolName = call.name().orElse("");
                     @SuppressWarnings("unchecked")
                     Map<String, Object> args = (Map<String, Object>) call.args().orElse(Collections.emptyMap());
-                    
                     eventPublisher.publishEvent(new ChatToolCallEvent(toolName, args));
-                    
                     if ("execute_js".equals(toolName)) {
                         String script = (String) args.get("script");
                         eventPublisher.publishEvent(new ChatStatusEvent("Executing Script...", true));
                         String resultJson = agentScriptService.executeScript(script);
-                        
                         Map<String, Object> responseMap = new HashMap<>();
                         responseMap.put("result", resultJson);
-                        
-                        FunctionResponse.Builder frBuilder = FunctionResponse.builder()
-                                .name("execute_js")
-                                .response(responseMap);
+                        FunctionResponse.Builder frBuilder = FunctionResponse.builder().name("execute_js").response(responseMap);
                         call.id().ifPresent(frBuilder::id);
                         responseParts.add(Part.builder().functionResponse(frBuilder.build()).build());
                     }
                 }
-
-                if (responseParts.isEmpty()) break;
-                
+                if (responseParts.isEmpty())
+                    break;
                 if (turn == maxTurns - 1) {
                     eventPublisher.publishEvent(new ChatContentEvent("\n*Max turns reached.*", true));
                     break;
                 }
-
                 // Prepare function responses as next user message
                 nextUserContent = Content.builder().role("user").parts(responseParts).build();
             }
-
             eventPublisher.publishEvent(new ChatStatusEvent("Ready", false));
-
         } catch (Exception e) {
             LOG.error("Error in ChatService", e);
             eventPublisher.publishEvent(new ChatStatusEvent("Error: " + e.getMessage(), false));
@@ -126,40 +108,39 @@ public class ChatService {
     }
 
     private void processStream(ResponseStream stream, List<FunctionCall> aggregateCalls, List<Part> aiParts) {
-        Iterator<Object> it = stream.iterator();
-        while (it.hasNext()) {
-            GenerateContentResponse response = (GenerateContentResponse) it.next();
-            response.candidates().ifPresent(candidates -> {
-                if (!candidates.isEmpty()) {
-                    Candidate candidate = candidates.get(0);
+        try (stream) {
+            Iterator<?> it = stream.iterator();
+            while (it.hasNext()) {
+                GenerateContentResponse response = (GenerateContentResponse) it.next();
+                response.usageMetadata().ifPresent(usage -> {
+                    long prompt = usage.promptTokenCount().map(Integer::longValue).orElse(0L);
+                    long candidate = usage.candidatesTokenCount().map(Integer::longValue).orElse(0L);
+                    long cached = usage.cachedContentTokenCount().map(Integer::longValue).orElse(0L);
+                    eventPublisher.publishEvent(new ChatUsageEvent(prompt, candidate, cached));
+                });
+                for (Candidate candidate : response.candidates().orElse(Collections.emptyList())) {
                     candidate.content().ifPresent(content -> {
-                        content.parts().ifPresent(parts -> {
-                            for (Part part : parts) {
-                                aiParts.add(part);
+                        for (Part part : content.parts().orElse(Collections.emptyList())) {
+                            aiParts.add(part);
+                            part.text().ifPresent(text -> {
                                 boolean isThought = part.thought().orElse(false);
-                                part.text().ifPresent(text -> {
-                                    if (isThought) {
-                                        eventPublisher.publishEvent(new ChatThoughtEvent(text, false));
-                                    } else {
-                                        eventPublisher.publishEvent(new ChatContentEvent(text, false));
-                                    }
-                                });
-                                part.functionCall().ifPresent(aggregateCalls::add);
-                            }
-                        });
+                                if (isThought) {
+                                    eventPublisher.publishEvent(new ChatThoughtEvent(text, false));
+                                } else {
+                                    eventPublisher.publishEvent(new ChatContentEvent(text, false));
+                                }
+                            });
+                            part.functionCall().ifPresent(aggregateCalls::add);
+                        }
                     });
                 }
-            });
-
-            response.usageMetadata().ifPresent(usage -> {
-                long prompt = usage.promptTokenCount().map(Number::longValue).orElse(0L);
-                long candidates = usage.candidatesTokenCount().map(Number::longValue).orElse(0L);
-                long cached = usage.cachedContentTokenCount().map(Number::longValue).orElse(0L);
-                eventPublisher.publishEvent(new ChatUsageEvent(prompt, candidates, cached));
-            });
+            }
+        } catch (Exception e) {
+            LOG.error("Error processing stream", e);
+            eventPublisher.publishEvent(new ChatStatusEvent("Stream Error: " + e.getMessage(), false));
+        } finally {
+            eventPublisher.publishEvent(new ChatContentEvent("", true));
+            eventPublisher.publishEvent(new ChatThoughtEvent("", true));
         }
-        
-        eventPublisher.publishEvent(new ChatContentEvent("", true));
-        eventPublisher.publishEvent(new ChatThoughtEvent("", true));
     }
 }

@@ -17,6 +17,20 @@
         <Region HBox.hgrow="ALWAYS" />
         
         
+        
+        <Separator orientation="VERTICAL" />
+        <HBox alignment="CENTER" spacing="5" styleClass="status-badge">
+            <Label text="Agent:" styleClass="stats-label" />
+            <Label fx:id="agentNameLabel" text="-" styleClass="stats-value" />
+        </HBox>
+        <HBox alignment="CENTER" spacing="5" styleClass="status-badge">
+            <Label text="Turns:" styleClass="stats-label" />
+            <Label fx:id="turnsLabel" text="0" styleClass="stats-value" />
+        </HBox>
+        <HBox alignment="CENTER" spacing="5" styleClass="status-badge">
+            <Label text="History:" styleClass="stats-label" />
+            <Label fx:id="historyLabel" text="0" styleClass="stats-value" />
+        </HBox>
         <Label fx:id="statusLabel" text="Status: Ready" styleClass="status-label"/>
     </HBox>
 

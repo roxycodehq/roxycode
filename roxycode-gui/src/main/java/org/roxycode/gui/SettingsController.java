@@ -8,6 +8,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.CheckBox;
 import javafx.scene.layout.VBox;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ public class SettingsController {
     public static final String THOUGHTS_DONT_SHOW = "NONE";
     public static final String THOUGHTS_SHOW_COLLAPSED = "COLLAPSED";
     public static final String THOUGHTS_SHOW_FULL = "FULL";
+    public static final String CAPTURE_TRANSCRIPTS = "capture_transcripts";
 
     public static final int DEFAULT_MIN_TOKENS = 4096;
     public static final int DEFAULT_TTL_MINUTES = 30;
@@ -70,6 +72,9 @@ public class SettingsController {
     @FXML
     private ComboBox<String> thoughtsComboBox;
 
+    @FXML
+    private CheckBox captureTranscriptsCheckBox;
+
     private Map<String, GeminiModel> models;
 
     @FXML
@@ -86,6 +91,7 @@ public class SettingsController {
         else if ("Show Full".equals(currentVisibility)) currentVisibility = THOUGHTS_SHOW_FULL;
         
         thoughtsComboBox.setValue(currentVisibility);
+        captureTranscriptsCheckBox.setSelected(prefs.getBoolean(CAPTURE_TRANSCRIPTS, false));
         loadModels();
         setupModelSelection();
     }
@@ -141,6 +147,7 @@ public class SettingsController {
             prefs.putInt(CACHE_TTL_MINUTES, Integer.parseInt(ttlMinutesField.getText()));
             prefs.putInt(CONVERSATION_MAX_TURNS, Integer.parseInt(maxTurnsField.getText()));
             prefs.put(THOUGHTS_VISIBILITY, thoughtsComboBox.getValue());
+            prefs.putBoolean(CAPTURE_TRANSCRIPTS, captureTranscriptsCheckBox.isSelected());
         } catch (NumberFormatException e) {
             // Use defaults if invalid
             prefs.putInt(CACHE_MIN_TOKENS, DEFAULT_MIN_TOKENS);

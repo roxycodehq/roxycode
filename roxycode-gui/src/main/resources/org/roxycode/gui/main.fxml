@@ -52,6 +52,12 @@
                     <FontIcon iconLiteral="fas-comment-dots" iconSize="18" styleClass="nav-icon"/>
                 </graphic>
             </Button>
+
+            <Button fx:id="historyNavButton" text="Agent History" onAction="#showHistory" styleClass="nav-button">
+                <graphic>
+                    <FontIcon iconLiteral="fas-history" iconSize="18" styleClass="nav-icon"/>
+                </graphic>
+            </Button>
             <Button fx:id="cachesNavButton" text="Caches" onAction="#showCaches" styleClass="nav-button">
                 <graphic>
                     <FontIcon iconLiteral="fas-layer-group" iconSize="18" styleClass="nav-icon"/>

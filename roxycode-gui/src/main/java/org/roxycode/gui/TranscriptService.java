@@ -27,6 +27,9 @@ public class TranscriptService {
 
     private Path currentTranscript;
 
+    @Inject
+    private java.util.prefs.Preferences prefs;
+
     @EventListener
     public void onStatus(ChatStatusEvent event) {
         // Create a new transcript when a new "Thinking..." state starts
@@ -61,6 +64,7 @@ public class TranscriptService {
     }
 
     private synchronized void ensureTranscriptFile() {
+        if (!prefs.getBoolean(SettingsController.CAPTURE_TRANSCRIPTS, false)) return;
         String projectPath = projectService.getProjectPath();
         if (projectPath == null) return;
 
@@ -76,6 +80,7 @@ public class TranscriptService {
     }
 
     private synchronized void appendTranscript(String text) {
+        if (!prefs.getBoolean(SettingsController.CAPTURE_TRANSCRIPTS, false)) return;
         if (currentTranscript == null) return;
         try {
             Files.writeString(currentTranscript, text, StandardOpenOption.APPEND);
