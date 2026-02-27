@@ -16,6 +16,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TabPane;
 import javafx.scene.web.WebView;
 import jakarta.inject.Inject;
+import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.roxycode.jsmashy.core.ProjectFile;
@@ -56,6 +57,9 @@ public class CacheListController {
 
     @Inject
     private ProjectService projectService;
+
+    @Inject
+    private TemplateService templateService;
 
     @FXML
     private Label localProjectPathLabel;
@@ -186,10 +190,8 @@ public class CacheListController {
     }
 
     private void loadHighlightedContent(String content) {
-        if (contentWebView == null)
-            return;
-        String escaped = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
-        String html = "<html><head>" + "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>" + "<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>" + "<style>body { margin: 0; background: #f8f9fa; } pre { margin: 0; padding: 15px; font-family: monospace; font-size: 12px; }</style>" + "</head><body>" + "<pre><code class='language-xml'>" + escaped + "</code></pre>" + "<script>hljs.highlightAll();</script>" + "</body></html>";
+        if (contentWebView == null) return;
+        String html = templateService.render("templates/code-preview.html", Map.of("content", content));
         Platform.runLater(() -> contentWebView.getEngine().loadContent(html));
     }
 

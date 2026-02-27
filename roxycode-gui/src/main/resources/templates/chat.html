@@ -1,0 +1,59 @@
+<html><head>
+<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>
+<style>
+body { font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.5; color: #2f3542; padding: 15px; background: transparent; }
+.message-container { margin-bottom: 20px; display: flex; flex-direction: column; }
+.user-message-container { align-items: flex-end; }
+.ai-message-container { align-items: flex-start; }
+.bubble { padding: 10px 15px; border-radius: 15px; max-width: 85%; word-wrap: break-word; }
+.user-bubble { background-color: #3498db; color: white; }
+.ai-bubble { background-color: #f1f2f6; color: #2f3542; border: 1px solid #dfe4ea; }
+.system-bubble { font-style: italic; color: #747d8c; align-self: center; }
+.thought-bubble { background-color: #f8f9fa; border-left: 4px solid #747d8c; padding: 8px; margin: 5px 0; border-radius: 4px; font-size: 0.9em; }
+summary { font-weight: bold; cursor: pointer; color: #57606f; outline: none; }
+pre { background: #f8f9fa; padding: 10px; border-radius: 8px; overflow-x: auto; border: 1px solid #dfe4ea; }
+code { font-family: monospace; font-size: 0.9em; }
+</style><script>
+var currentAiMsgId = null; var currentThoughtId = null; var thoughtsVisibility = '{{ thoughtsVisibility }}';
+function addMessage(containerClass, bubbleClass, html) {
+  var history = document.getElementById('chat-history');
+  var c = document.createElement('div'); c.className = containerClass;
+  c.innerHTML = '<div class="' + bubbleClass + '">' + html + '</div>';
+  history.appendChild(c); if (typeof hljs !== 'undefined') hljs.highlightAll();
+  window.scrollTo(0, document.body.scrollHeight);
+}
+function streamToWebView(type, text, isFinal) {
+  var history = document.getElementById('chat-history');
+  if (type === 'thought') {
+    if (thoughtsVisibility === 'NONE') return;
+    if (!text && !isFinal) return;
+    if (!currentThoughtId) {
+      currentThoughtId = 't' + Date.now();
+      var d = document.createElement('details'); d.id = currentThoughtId; d.className = 'thought-bubble';
+      if (thoughtsVisibility === 'FULL') d.open = true;
+      d.innerHTML = '<summary>Thought Process</summary><div class="thought-content"></div>'; history.appendChild(d);
+    }
+    if (text) {
+      document.getElementById(currentThoughtId).querySelector('.thought-content').innerText += text;
+    }
+    if (isFinal) {
+      var container = document.getElementById(currentThoughtId);
+      if (container && !container.querySelector('.thought-content').innerText.trim()) {
+        container.remove();
+      }
+      currentThoughtId = null;
+    }
+  } else if (type === 'content') {
+    if (!currentAiMsgId) {
+      currentAiMsgId = 'a' + Date.now();
+      var c = document.createElement('div'); c.className = 'message-container ai-message-container';
+      c.innerHTML = '<div id="' + currentAiMsgId + '" class="bubble ai-bubble"></div>'; history.appendChild(c);
+    }
+    var b = document.getElementById(currentAiMsgId);
+    if (isFinal) { b.innerHTML = text; currentAiMsgId = null; if (typeof hljs !== 'undefined') hljs.highlightAll(); }
+    else { b.innerText += text; }
+  }
+  window.scrollTo(0, document.body.scrollHeight);
+}
+</script></head><body><div id='chat-history'></div></body></html>

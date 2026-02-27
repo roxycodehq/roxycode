@@ -64,13 +64,14 @@ public class CodebaseChatController {
     @Inject
     private AgentScriptService agentScriptService;
 
-    private Chat chat;
+    @Inject
+    private TemplateService templateService;
 
     private WebEngine webEngine;
 
-    private MarkdownRenderer markdownRenderer = new MarkdownRenderer();
+    private final MarkdownRenderer markdownRenderer = new MarkdownRenderer();
 
-    private StringBuilder aiResponseBuffer = new StringBuilder();
+    private final StringBuilder aiResponseBuffer = new StringBuilder();
 
     private boolean webViewLoaded = false;
 
@@ -85,7 +86,7 @@ public class CodebaseChatController {
         else if ("Show Collapsed".equals(visibility)) visibility = SettingsController.THOUGHTS_SHOW_COLLAPSED;
         else if ("Show Full".equals(visibility)) visibility = SettingsController.THOUGHTS_SHOW_FULL;
 
-        webEngine.loadContent(getInitialHtml(visibility));
+        webEngine.loadContent(templateService.render("templates/chat.html", Map.of("thoughtsVisibility", visibility)));
         webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
             if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
                 webViewLoaded = true;
@@ -156,16 +157,27 @@ public class CodebaseChatController {
         String input = chatInput.getText();
         if (input == null || input.trim().isEmpty())
             return;
+        
+        Agent agent = agentComboBox.getValue();
+        if (agent == null) return;
+
+        Chat chat = (Chat) agent.getSession().get("chat");
         if (chat == null) {
-            addMessage("System", "Please select a folder and cache it before chatting.", false);
-            return;
+            if (projectService.getCurrentCacheName() != null) {
+                reconnectSession(agent);
+                addMessage("System", "Initializing agent session...", false);
+                return;
+            } else {
+                addMessage("System", "Please select a folder and cache it before chatting.", false);
+                return;
+            }
         }
-        LOG.info("Sending message: {}", input);
+
+        LOG.info("Sending message to {}: {}", agent.getName(), input);
         chatInput.clear();
-        // Ensure buffer is empty
         aiResponseBuffer.setLength(0);
         addMessage("User", input, true);
-        Agent agent = agentComboBox.getValue();
+        
         int maxTurns = geminiService.getPrefs().getInt(SettingsController.CONVERSATION_MAX_TURNS, SettingsController.DEFAULT_MAX_TURNS);
         CompletableFuture.runAsync(() -> {
             chatService.execute(input, agent, chat, maxTurns);
@@ -197,16 +209,14 @@ public class CodebaseChatController {
         for (ChatMessage msg : history) {
             addMessage(msg.sender(), msg.text(), false);
         }
-        this.chat = projectService.getActiveChat();
-        if (this.chat != null) {
-            statusLabel.setText("Status: Ready");
-        } else if (projectService.getCurrentCacheName() != null) {
-            reconnectSession();
+        // We don't restore a global chat object anymore, agents manage their own.
+        if (projectService.getCurrentCacheName() != null) {
+            statusLabel.setText("Status: Ready (Cache Active)");
         }
     }
 
-    private void reconnectSession() {
-        statusLabel.setText("Status: Reconnecting...");
+    private void reconnectSession(Agent agent) {
+        statusLabel.setText("Status: Connecting " + agent.getName() + "...");
         CompletableFuture.runAsync(() -> {
             try {
                 String cacheName = projectService.getCurrentCacheName();
@@ -214,13 +224,13 @@ public class CodebaseChatController {
                 if (model == null)
                     model = geminiService.getPrefs().get(SettingsController.GEMINI_MODEL, SettingsController.DEFAULT_MODEL);
                 geminiService.validateCache(cacheName);
-                this.chat = geminiService.startChat(model, cacheName);
-                projectService.setActiveChat(this.chat);
+                Chat chat = geminiService.startChat(model, cacheName);
+                agent.getSession().put("chat", chat);
                 Platform.runLater(() -> statusLabel.setText("Status: Ready"));
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     statusLabel.setText("Status: Error");
-                    addMessage("System", "Session expired or error: " + e.getMessage(), false);
+                    addMessage("System", "Session error for " + agent.getName() + ": " + e.getMessage(), false);
                 });
             }
         });
@@ -261,70 +271,6 @@ public class CodebaseChatController {
             return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         return String.format("%.1f %cB", bytes / Math.pow(1024, exp), "KMGTPE".charAt(exp - 1));
-    }
-
-    private String getInitialHtml(String visibility) {
-        return """
-            <html><head>
-            <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>
-            <script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>
-            <style>
-            body { font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.5; color: #2f3542; padding: 15px; background: transparent; }
-            .message-container { margin-bottom: 20px; display: flex; flex-direction: column; }
-            .user-message-container { align-items: flex-end; }
-            .ai-message-container { align-items: flex-start; }
-            .bubble { padding: 10px 15px; border-radius: 15px; max-width: 85%; word-wrap: break-word; }
-            .user-bubble { background-color: #3498db; color: white; }
-            .ai-bubble { background-color: #f1f2f6; color: #2f3542; border: 1px solid #dfe4ea; }
-            .system-bubble { font-style: italic; color: #747d8c; align-self: center; }
-            .thought-bubble { background-color: #f8f9fa; border-left: 4px solid #747d8c; padding: 8px; margin: 5px 0; border-radius: 4px; font-size: 0.9em; }
-            summary { font-weight: bold; cursor: pointer; color: #57606f; outline: none; }
-            pre { background: #f8f9fa; padding: 10px; border-radius: 8px; overflow-x: auto; border: 1px solid #dfe4ea; }
-            code { font-family: monospace; font-size: 0.9em; }
-            </style><script>
-            var currentAiMsgId = null; var currentThoughtId = null; var thoughtsVisibility = 'THOUGHTS_VISIBILITY_PLACEHOLDER';
-            function addMessage(containerClass, bubbleClass, html) {
-              var history = document.getElementById('chat-history');
-              var c = document.createElement('div'); c.className = containerClass;
-              c.innerHTML = '<div class="' + bubbleClass + '">' + html + '</div>';
-              history.appendChild(c); if (typeof hljs !== 'undefined') hljs.highlightAll();
-              window.scrollTo(0, document.body.scrollHeight);
-            }
-            function streamToWebView(type, text, isFinal) {
-              var history = document.getElementById('chat-history');
-              if (type === 'thought') {
-                if (thoughtsVisibility === 'NONE') return;
-                if (!text && !isFinal) return;
-                if (!currentThoughtId) {
-                  currentThoughtId = 't' + Date.now();
-                  var d = document.createElement('details'); d.id = currentThoughtId; d.className = 'thought-bubble';
-                  if (thoughtsVisibility === 'FULL') d.open = true;
-                  d.innerHTML = '<summary>Thought Process</summary><div class="thought-content"></div>'; history.appendChild(d);
-                }
-                if (text) {
-                  document.getElementById(currentThoughtId).querySelector('.thought-content').innerText += text;
-                }
-                if (isFinal) {
-                  var container = document.getElementById(currentThoughtId);
-                  if (container && !container.querySelector('.thought-content').innerText.trim()) {
-                    container.remove();
-                  }
-                  currentThoughtId = null;
-                }
-              } else if (type === 'content') {
-                if (!currentAiMsgId) {
-                  currentAiMsgId = 'a' + Date.now();
-                  var c = document.createElement('div'); c.className = 'message-container ai-message-container';
-                  c.innerHTML = '<div id="' + currentAiMsgId + '" class="bubble ai-bubble"></div>'; history.appendChild(c);
-                }
-                var b = document.getElementById(currentAiMsgId);
-                if (isFinal) { b.innerHTML = text; currentAiMsgId = null; if (typeof hljs !== 'undefined') hljs.highlightAll(); }
-                else { b.innerText += text; }
-              }
-              window.scrollTo(0, document.body.scrollHeight);
-            }
-            </script></head><body><div id='chat-history'></div></body></html>
-            """.replace("THOUGHTS_VISIBILITY_PLACEHOLDER", escapeJs(visibility));
     }
 
     static String escapeJs(String text) {

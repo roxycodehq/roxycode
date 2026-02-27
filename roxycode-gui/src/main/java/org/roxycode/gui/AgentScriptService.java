@@ -75,6 +75,7 @@ public class AgentScriptService {
             try {
                 return objectMapper.writeValueAsString(errorResponse);
             } catch (Exception ex) {
+                LOG.error("Error running js", ex);
                 return "{\"success\": false, \"errorMessage\": \"Serialization error: \" + ex.getMessage() + \"\"}";
             }
         }

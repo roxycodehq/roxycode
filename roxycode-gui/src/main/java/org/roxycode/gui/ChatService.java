@@ -32,27 +32,42 @@ public class ChatService {
         try {
             eventPublisher.publishEvent(new ChatStatusEvent("Thinking...", true));
 
+            List<Content> history = agent.getHistory();
+            
+            // Prepare user input
             String currentInput = userInput;
-            if (agent != null) {
-                currentInput = "Persona: " + agent.name() + "\n" +
-                        "Instructions: " + agent.systemPrompt() + "\n\n" +
-                        "User Query: " + userInput;
+            if (history.isEmpty()) {
+                currentInput = "Persona: " + agent.getName() + "\n" +
+                               "Instructions: " + agent.getSystemPrompt() + "\n\n" +
+                               "User Query: " + userInput;
             }
 
-            Object nextMessage = currentInput;
+            Content nextUserContent = Content.builder()
+                    .role("user")
+                    .parts(Collections.singletonList(Part.builder().text(currentInput).build()))
+                    .build();
 
             for (int turn = 0; turn < maxTurns; turn++) {
                 eventPublisher.publishEvent(new ChatStatusEvent("Turn " + (turn + 1) + "/" + maxTurns, true));
                 
-                ResponseStream stream;
-                if (nextMessage instanceof String s) {
-                    stream = chat.sendMessageStream(s);
-                } else {
-                    stream = chat.sendMessageStream((Content) nextMessage);
-                }
+                // Add to agent history
+                history.add(nextUserContent);
+                trimHistory(history, agent.getMaxWindowSize());
 
+                // Sync with SDK Chat history if possible. 
+                // Since we can't easily set history on the SDK Chat object after creation,
+                // we'll rely on the fact that sendMessage appends to it.
+                // Trimming the SDK chat history is harder.
+                
+                ResponseStream stream = chat.sendMessageStream(nextUserContent);
+
+                List<Part> aiParts = new ArrayList<>();
                 List<FunctionCall> aggregateCalls = new ArrayList<>();
-                processStream(stream, aggregateCalls);
+                processStream(stream, aggregateCalls, aiParts);
+                
+                // Add AI response to agent history
+                Content modelContent = Content.builder().role("model").parts(aiParts).build();
+                history.add(modelContent);
 
                 if (aggregateCalls.isEmpty()) break;
 
@@ -87,7 +102,8 @@ public class ChatService {
                     break;
                 }
 
-                nextMessage = Content.builder().role("user").parts(responseParts).build();
+                // Prepare function responses as next user message
+                nextUserContent = Content.builder().role("user").parts(responseParts).build();
             }
 
             eventPublisher.publishEvent(new ChatStatusEvent("Ready", false));
@@ -98,7 +114,18 @@ public class ChatService {
         }
     }
 
-    private void processStream(ResponseStream stream, List<FunctionCall> aggregateCalls) {
+    private void trimHistory(List<Content> history, int maxSize) {
+        while (history.size() > maxSize) {
+            history.remove(0);
+        }
+        // Ensure it starts with user role
+        while (!history.isEmpty() && !"user".equals(history.get(0).role().orElse(""))) {
+            history.remove(0);
+        }
+        // Ensure alternating roles (not strictly enforced here but removal usually happens in pairs)
+    }
+
+    private void processStream(ResponseStream stream, List<FunctionCall> aggregateCalls, List<Part> aiParts) {
         Iterator<Object> it = stream.iterator();
         while (it.hasNext()) {
             GenerateContentResponse response = (GenerateContentResponse) it.next();
@@ -108,6 +135,7 @@ public class ChatService {
                     candidate.content().ifPresent(content -> {
                         content.parts().ifPresent(parts -> {
                             for (Part part : parts) {
+                                aiParts.add(part);
                                 boolean isThought = part.thought().orElse(false);
                                 part.text().ifPresent(text -> {
                                     if (isThought) {
@@ -116,8 +144,6 @@ public class ChatService {
                                         eventPublisher.publishEvent(new ChatContentEvent(text, false));
                                     }
                                 });
-
-                                // Function calls arrive in parts as well
                                 part.functionCall().ifPresent(aggregateCalls::add);
                             }
                         });
@@ -125,7 +151,6 @@ public class ChatService {
                 }
             });
 
-            // Usage
             response.usageMetadata().ifPresent(usage -> {
                 long prompt = usage.promptTokenCount().map(Number::longValue).orElse(0L);
                 long candidates = usage.candidatesTokenCount().map(Number::longValue).orElse(0L);
@@ -134,7 +159,6 @@ public class ChatService {
             });
         }
         
-        // Finalize content for this turn
         eventPublisher.publishEvent(new ChatContentEvent("", true));
         eventPublisher.publishEvent(new ChatThoughtEvent("", true));
     }

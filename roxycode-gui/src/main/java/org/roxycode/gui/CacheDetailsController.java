@@ -5,6 +5,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.web.WebView;
 import jakarta.inject.Inject;
+import java.util.Map;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +35,9 @@ public class CacheDetailsController {
 
     @Inject
     private ApplicationContext context;
+
+    @Inject
+    private TemplateService templateService;
 
     @FXML
     public void initialize() {
@@ -76,8 +80,7 @@ public class CacheDetailsController {
     }
 
     private void loadHighlightedContent(String content) {
-        String escaped = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
-        String html = "<html><head>" + "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>" + "<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>" + "<style>body { margin: 0; background: #f8f9fa; } pre { margin: 0; padding: 15px; font-family: monospace; font-size: 12px; }</style>" + "</head><body>" + "<pre><code class='language-xml'>" + escaped + "</code></pre>" + "<script>hljs.highlightAll();</script>" + "</body></html>";
+        String html = templateService.render("templates/code-preview.html", Map.of("content", content));
         contentWebView.getEngine().loadContent(html);
     }
 

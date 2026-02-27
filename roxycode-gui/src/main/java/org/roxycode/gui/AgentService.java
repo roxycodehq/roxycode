@@ -9,12 +9,15 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service to manage and load available agents from configuration.
  */
 @Singleton
 public class AgentService {
+    private static final Logger LOG = LoggerFactory.getLogger(AgentService.class);
 
     private Map<String, Agent> agents;
 
@@ -29,15 +32,17 @@ public class AgentService {
             if (is == null) {
                 throw new IOException("agents.toml not found in resources");
             }
-            agents = mapper.readValue(is, new TypeReference<Map<String, Agent>>() {});
+            agents = mapper.readValue(is, new TypeReference<Map<String, Agent>>() {
+            });
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.error("Unable to load agents", e);
             agents = Map.of();
         }
     }
 
     /**
-     * Returns all available agents.
+     * Returns all avai
+     * @return lable agents.
      */
     public List<Agent> getAgents() {
         return new ArrayList<>(agents.values());
@@ -45,6 +50,8 @@ public class AgentService {
 
     /**
      * Returns an agent by its ID.
+     * @param id
+     * @return 
      */
     public Agent getAgent(String id) {
         return agents.get(id);

@@ -7,5 +7,6 @@ public enum AgentRole {
     RESEARCH,
     ANALYST,
     CODER,
-    QA
+    QA,
+    GENERAL
 }
