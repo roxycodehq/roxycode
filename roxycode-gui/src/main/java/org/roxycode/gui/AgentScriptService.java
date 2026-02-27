@@ -1,6 +1,7 @@
 package org.roxycode.gui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -19,6 +20,15 @@ import java.util.HashMap;
 public class AgentScriptService {
     private static final Logger LOG = LoggerFactory.getLogger(AgentScriptService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Inject
+    private PlanService planService;
+
+    @Inject
+    private ProjectService projectService;
+
+    @Inject
+    private AgentService agentService;
 
     /**
      * Executes the provided JavaScript code and returns a JSON string with the result.
@@ -39,8 +49,13 @@ public class AgentScriptService {
                 .allowAllAccess(true)
                 .build()) {
             
+            var bindings = context.getBindings("js");
+            bindings.putMember("planService", planService);
+            bindings.putMember("projectService", projectService);
+            bindings.putMember("agentService", agentService);
+            
             Value result = context.eval("js", script);
-            Object returnValue = result != null ? result.as(Object.class) : null;
+            Object returnValue = result != null ? (result.isHostObject() ? result.asHostObject() : result.as(Object.class)) : null;
             
             Map<String, Object> response = new HashMap<>();
             response.put("returnValue", returnValue != null ? returnValue : "null");
