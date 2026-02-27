@@ -2,6 +2,7 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
 <?import javafx.geometry.Insets?>
 
 <VBox xmlns:fx="http://javafx.com/fxml" fx:controller="org.roxycode.gui.CacheListController" 
@@ -10,18 +11,68 @@
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
 
-    <HBox alignment="CENTER_LEFT" spacing="10">
-        <Label text="Gemini Caches" styleClass="view-title" />
-        <Region HBox.hgrow="ALWAYS" />
-        <Button text="Refresh" onAction="#refresh" styleClass="action-button" />
-    </HBox>
+    <Label text="Cache Management" styleClass="view-title" />
 
-    <TableView fx:id="cacheTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="nameColumn" text="Display Name" prefWidth="250" />
-            <TableColumn fx:id="createTimeColumn" text="Creation Time" prefWidth="200" />
-            <TableColumn fx:id="expireTimeColumn" text="Expiration Time" prefWidth="200" />
-            <TableColumn fx:id="tokensColumn" text="Total Tokens" prefWidth="150" />
-        </columns>
-    </TableView>
+    <TabPane fx:id="cacheTabPane" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
+        <tabs>
+            <Tab text="Local Cache">
+                <VBox spacing="20">
+                    <padding>
+                        <Insets top="15" right="0" bottom="0" left="0"/>
+                    </padding>
+                    <HBox alignment="CENTER_LEFT" spacing="15">
+                        <Label text="Local Codebase Cache" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="localStatusLabel" text="Status: Ready" styleClass="status-label"/>
+                        <Button fx:id="cacheButton" text="Cache Codebase" onAction="#handleCacheCodebase" styleClass="modern-button"/>
+                    </HBox>
+                    <GridPane hgap="15" vgap="15" styleClass="model-details-box">
+                        <columnConstraints>
+                            <ColumnConstraints minWidth="120" />
+                            <ColumnConstraints hgrow="ALWAYS" />
+                        </columnConstraints>
+                        
+                        <Label text="Current Project:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <Label fx:id="localProjectPathLabel" text="No project selected" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                        
+                        <Label text="Cache File Path:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <Label fx:id="localCachePathLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        
+                        <Label text="Last Generated:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <Label fx:id="localCacheTimeLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        
+                        <Label text="File Size:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                        <Label fx:id="localCacheSizeLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                        
+                        <Label text="Estimated Tokens:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                        <Label fx:id="localTokensLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                    </GridPane>
+                    
+                    <Label text="Cache Content Preview" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                    <WebView fx:id="contentWebView" VBox.vgrow="ALWAYS" minHeight="200" />
+                </VBox>
+            </Tab>
+            <Tab text="Online Caches">
+                <VBox spacing="10">
+                    <padding>
+                        <Insets top="15" right="0" bottom="0" left="0"/>
+                    </padding>
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="Gemini-hosted Caches" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button text="Refresh" onAction="#refresh" styleClass="action-button" />
+                    </HBox>
+                    <TableView fx:id="cacheTable" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="nameColumn" text="Display Name" prefWidth="250" />
+                            <TableColumn fx:id="createTimeColumn" text="Creation Time" prefWidth="200" />
+                            <TableColumn fx:id="expireTimeColumn" text="Expiration Time" prefWidth="200" />
+                            <TableColumn fx:id="tokensColumn" text="Total Tokens" prefWidth="150" />
+                            <TableColumn fx:id="actionsColumn" text="Actions" prefWidth="100" />
+                        </columns>
+                    </TableView>
+                </VBox>
+            </Tab>
+        </tabs>
+    </TabPane>
 </VBox>

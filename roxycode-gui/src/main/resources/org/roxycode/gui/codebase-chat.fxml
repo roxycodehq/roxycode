@@ -10,9 +10,13 @@
     
     <HBox spacing="15" alignment="CENTER_LEFT">
         <Button text="Select Folder" onAction="#handleSelectFolder" styleClass="modern-button, secondary-button"/>
-        <Label fx:id="pathLabel" text="No folder selected" HBox.hgrow="ALWAYS" maxWidth="400" textOverrun="CENTER_ELLIPSIS" styleClass="project-name" />
+        <Label fx:id="pathLabel" text="No folder selected" HBox.hgrow="ALWAYS" maxWidth="300" textOverrun="CENTER_ELLIPSIS" styleClass="project-name" />
+        <Label fx:id="sizeLabel" text="" styleClass="stats-label" />
+        <Label fx:id="tokenLabel" text="" styleClass="stats-label" />
+        <ComboBox fx:id="agentComboBox" promptText="Select Agent" styleClass="modern-text-field" />
         <Region HBox.hgrow="ALWAYS" />
-        <Button fx:id="cacheButton" text="Cache Codebase" onAction="#handleCacheCodebase" disable="true" styleClass="modern-button"/>
+        
+        
         <Label fx:id="statusLabel" text="Status: Ready" styleClass="status-label"/>
     </HBox>
 

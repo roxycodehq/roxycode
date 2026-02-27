@@ -16,7 +16,7 @@ class SettingsControllerTest {
 
     private ApplicationContext context;
     private Preferences prefs;
-    private static final String TEST_PREF_PATH = "org/roxycode/gui/test";
+    private static final String TEST_PREF_PATH = "org/roxycode/gui/test/SettingsControllerTest";
 
     @BeforeEach
     void setup() {

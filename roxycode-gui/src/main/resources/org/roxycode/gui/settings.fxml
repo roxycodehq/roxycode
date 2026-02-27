@@ -34,6 +34,43 @@
                     </VBox>
                 </content>
             </Tab>
+        
+            <Tab text="Caching">
+                <content>
+                    <VBox spacing="15">
+                        <padding>
+                            <Insets top="20" right="10" bottom="20" left="10"/>
+                        </padding>
+                        
+                        <VBox spacing="5">
+                            <Label text="Minimum Cache Size (tokens)" styleClass="status-label"/>
+                            <TextField fx:id="minTokensField" promptText="4096" styleClass="modern-text-field"/>
+                            <Label text="Approximate: 2.7 bytes per token" style="-fx-font-size: 10px; -fx-text-fill: #747d8c;"/>
+                        </VBox>
+                        
+                        <VBox spacing="5">
+                            <Label text="Cache TTL (minutes)" styleClass="status-label"/>
+                            <TextField fx:id="ttlMinutesField" promptText="30" styleClass="modern-text-field"/>
+                        </VBox>
+                    </VBox>
+                </content>
+            </Tab>
+        
+            <Tab text="Conversation">
+                <content>
+                    <VBox spacing="15">
+                        <padding>
+                            <Insets top="20" right="10" bottom="20" left="10"/>
+                        </padding>
+                        
+                        <VBox spacing="5">
+                            <Label text="Maximum Conversation Turns" styleClass="status-label"/>
+                            <TextField fx:id="maxTurnsField" promptText="5" styleClass="modern-text-field"/>
+                            <Label text="Number of automated turns an agent will take." style="-fx-font-size: 10px; -fx-text-fill: #747d8c;"/>
+                        </VBox>
+                    </VBox>
+                </content>
+            </Tab>
         </tabs>
     </TabPane>
     

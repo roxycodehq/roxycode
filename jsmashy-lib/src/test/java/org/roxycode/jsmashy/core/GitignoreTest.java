@@ -53,4 +53,34 @@ class GitignoreTest {
         assertTrue(foundNested, "nested/nested.txt should be found");
         assertTrue(foundNestedLog, "nested/nested.log should be found due to negation in nested .gitignore");
     }
+
+    @Test
+    void testParentGitignoreFiltering() throws IOException {
+        // Setup: parentDir/.gitignore and parentDir/subDir (which we will scan)
+        Path parentDir = tempDir.resolve("parent");
+        Files.createDirectory(parentDir);
+        Files.writeString(parentDir.resolve(".gitignore"), "*.log\n");
+        Files.writeString(parentDir.resolve(".git"), ""); // Mock .git file/dir to stop traversal
+
+        Path subDir = parentDir.resolve("sub");
+        Files.createDirectory(subDir);
+        Files.writeString(subDir.resolve("keep.txt"), "keep");
+        Files.writeString(subDir.resolve("ignore.log"), "ignore");
+
+        RepositoryScanner scanner = new RepositoryScanner();
+        // Scanning 'subDir' but it should pick up rules from 'parentDir'
+        List<ProjectFile> files = scanner.scan(subDir);
+
+        boolean foundKeep = false;
+        boolean foundIgnoreLog = false;
+
+        for (ProjectFile pf : files) {
+            String path = pf.getPath().replace('\\', '/');
+            if (path.equals("keep.txt")) foundKeep = true;
+            if (path.equals("ignore.log")) foundIgnoreLog = true;
+        }
+
+        assertTrue(foundKeep, "keep.txt should be found");
+        assertFalse(foundIgnoreLog, "ignore.log should be filtered by parent .gitignore");
+    }
 }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="15" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="org.roxycode.gui.CacheDetailsController" styleClass="chat-container">
+    <HBox spacing="15" alignment="CENTER_LEFT">
+        <Label text="Local Cache Details" styleClass="settings-section-title"/>
+        <Region HBox.hgrow="ALWAYS" />
+        <Button text="Back to Chat" onAction="#handleBack" styleClass="modern-button, secondary-button"/>
+    </HBox>
+
+    <GridPane hgap="10" vgap="10" styleClass="model-details-box">
+        <columnConstraints>
+            <ColumnConstraints minWidth="100" />
+            <ColumnConstraints hgrow="ALWAYS" />
+        </columnConstraints>
+        
+        <Label text="File Path:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+        <Label fx:id="pathLabel" GridPane.columnIndex="1" GridPane.rowIndex="0" wrapText="true"/>
+        
+        <Label text="Size:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+        <Label fx:id="sizeLabel" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+        
+        <Label text="Created:" style="-fx-font-weight: bold;" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+        <Label fx:id="timeLabel" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+    </GridPane>
+
+    <WebView fx:id="contentWebView" VBox.vgrow="ALWAYS" />
+</VBox>

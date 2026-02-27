@@ -8,7 +8,7 @@ public class MainControllerTest {
 
     @Test
     void testControllerIsAvailableInContext() {
-        try (ApplicationContext context = ApplicationContext.run()) {
+        try (ApplicationContext context = ApplicationContext.run(java.util.Map.of("roxycode.preferences.path", "org/roxycode/gui/test"))) {
             MainController controller = context.getBean(MainController.class);
             assertNotNull(controller);
         }

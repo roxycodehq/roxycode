@@ -44,6 +44,7 @@ public class ProjectFileVisitor extends SimpleFileVisitor<Path> {
         this.rootDir = rootDir;
         this.files = files;
         this.analyzers = analyzers;
+        loadParentIgnoreFiles();
     }
 
     private boolean isIgnored(Path path, boolean isDir) {
@@ -136,4 +137,39 @@ public class ProjectFileVisitor extends SimpleFileVisitor<Path> {
         
         return FileVisitResult.CONTINUE;
     }
+
+    private void loadParentIgnoreFiles() {
+        Path gitRoot = findGitRoot(rootDir);
+        List<Path> parents = new java.util.ArrayList<>();
+        Path current = rootDir.getParent();
+        
+        while (current != null) {
+            parents.add(current);
+            if (current.equals(gitRoot)) break;
+            current = current.getParent();
+        }
+        
+        // Reverse to push higher level ignore files first (bottom of stack)
+        java.util.Collections.reverse(parents);
+        for (Path p : parents) {
+            try {
+                loadIgnoreFile(p, ".gitignore");
+                loadIgnoreFile(p, ".jsmashyignore");
+            } catch (IOException e) {
+                logger.warn("Failed to load parent ignore file in {}: {}", p, e.getMessage());
+            }
+        }
+    }
+
+    private Path findGitRoot(Path startPath) {
+        Path current = startPath;
+        while (current != null) {
+            if (Files.exists(current.resolve(".git"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
 }

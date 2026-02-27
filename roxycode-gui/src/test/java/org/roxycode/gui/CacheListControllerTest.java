@@ -8,7 +8,7 @@ class CacheListControllerTest {
 
     @Test
     void testControllerIsAvailableInContext() {
-        try (ApplicationContext context = ApplicationContext.run()) {
+        try (ApplicationContext context = ApplicationContext.run(java.util.Map.of("roxycode.preferences.path", "org/roxycode/gui/test"))) {
             CacheListController controller = context.getBean(CacheListController.class);
             assertNotNull(controller);
         }

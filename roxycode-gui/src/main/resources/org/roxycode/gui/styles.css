@@ -185,3 +185,41 @@
     -fx-border-color: -border-color;
     -fx-border-width: 1;
 }
+/* Metadata Badges */
+.metadata-badge {
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 15;
+    -fx-border-radius: 15;
+    -fx-border-width: 1;
+    -fx-border-color: -border-color;
+    -fx-background-color: -secondary-color;
+}
+
+.metadata-badge Label {
+    -fx-font-size: 11px;
+    -fx-text-fill: -text-main;
+    -fx-font-weight: bold;
+}
+
+.badge-icon {
+    -fx-fill: -text-muted;
+    -fx-scale-x: 0.7;
+    -fx-scale-y: 0.7;
+}
+
+.os-badge {
+    -fx-border-color: #3498db;
+}
+
+.java-badge {
+    -fx-border-color: #e67e22;
+}
+
+.branch-badge {
+    -fx-border-color: #27ae60;
+}
+
+.header-status-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
