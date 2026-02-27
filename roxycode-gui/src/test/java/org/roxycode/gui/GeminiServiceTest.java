@@ -26,6 +26,8 @@ class GeminiServiceTest {
     void tearDown() throws BackingStoreException {
         if (prefs != null && prefs.nodeExists("")) {
             prefs.clear();
+            prefs.removeNode();
+            prefs.flush();
         }
     }
 

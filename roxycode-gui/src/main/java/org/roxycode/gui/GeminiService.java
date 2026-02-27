@@ -70,7 +70,11 @@ public class GeminiService {
         System.out.println("DEBUG: Cache: " + cachedContentName);
         // Note: tools and system_instruction are NOT allowed in GenerateContentConfig
         // when using cachedContent. They must be set at cache creation time.
-        GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder().cachedContent(cachedContentName);
+        GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder()
+                .cachedContent(cachedContentName)
+                .thinkingConfig(ThinkingConfig.builder()
+                        .includeThoughts(true)
+                        .build());
         try {
             Chat chat = getClient().chats.create(model, configBuilder.build());
             System.out.println("DEBUG: Chat session created successfully.");

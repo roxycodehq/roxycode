@@ -24,6 +24,10 @@ public class SettingsController {
     public static final String CACHE_MIN_TOKENS = "cache_min_tokens";
     public static final String CACHE_TTL_MINUTES = "cache_ttl_minutes";
     public static final String CONVERSATION_MAX_TURNS = "conversation_max_turns";
+    public static final String THOUGHTS_VISIBILITY = "thoughts_visibility";
+    public static final String THOUGHTS_DONT_SHOW = "NONE";
+    public static final String THOUGHTS_SHOW_COLLAPSED = "COLLAPSED";
+    public static final String THOUGHTS_SHOW_FULL = "FULL";
 
     public static final int DEFAULT_MIN_TOKENS = 4096;
     public static final int DEFAULT_TTL_MINUTES = 30;
@@ -63,6 +67,9 @@ public class SettingsController {
     @FXML
     private TextField maxTurnsField;
 
+    @FXML
+    private ComboBox<String> thoughtsComboBox;
+
     private Map<String, GeminiModel> models;
 
     @FXML
@@ -71,6 +78,14 @@ public class SettingsController {
         minTokensField.setText(String.valueOf(prefs.getInt(CACHE_MIN_TOKENS, DEFAULT_MIN_TOKENS)));
         ttlMinutesField.setText(String.valueOf(prefs.getInt(CACHE_TTL_MINUTES, DEFAULT_TTL_MINUTES)));
         maxTurnsField.setText(String.valueOf(prefs.getInt(CONVERSATION_MAX_TURNS, DEFAULT_MAX_TURNS)));
+        thoughtsComboBox.getItems().addAll(THOUGHTS_DONT_SHOW, THOUGHTS_SHOW_COLLAPSED, THOUGHTS_SHOW_FULL);
+        String currentVisibility = prefs.get(THOUGHTS_VISIBILITY, THOUGHTS_SHOW_COLLAPSED);
+        // Migration logic
+        if ("Don't Show".equals(currentVisibility)) currentVisibility = THOUGHTS_DONT_SHOW;
+        else if ("Show Collapsed".equals(currentVisibility)) currentVisibility = THOUGHTS_SHOW_COLLAPSED;
+        else if ("Show Full".equals(currentVisibility)) currentVisibility = THOUGHTS_SHOW_FULL;
+        
+        thoughtsComboBox.setValue(currentVisibility);
         loadModels();
         setupModelSelection();
     }
@@ -125,6 +140,7 @@ public class SettingsController {
             prefs.putInt(CACHE_MIN_TOKENS, Integer.parseInt(minTokensField.getText()));
             prefs.putInt(CACHE_TTL_MINUTES, Integer.parseInt(ttlMinutesField.getText()));
             prefs.putInt(CONVERSATION_MAX_TURNS, Integer.parseInt(maxTurnsField.getText()));
+            prefs.put(THOUGHTS_VISIBILITY, thoughtsComboBox.getValue());
         } catch (NumberFormatException e) {
             // Use defaults if invalid
             prefs.putInt(CACHE_MIN_TOKENS, DEFAULT_MIN_TOKENS);

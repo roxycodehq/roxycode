@@ -1,35 +1,19 @@
 package org.roxycode.gui;
 
 import com.google.genai.Chat;
-import com.google.genai.types.CachedContent;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Content;
-import com.google.genai.types.FunctionCall;
-import com.google.genai.types.FunctionResponse;
-import com.google.genai.types.Part;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Collections;
-import io.micronaut.context.annotation.Prototype;
+import com.google.genai.types.*;
+import jakarta.inject.Singleton;
+import io.micronaut.runtime.event.annotation.EventListener;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
 import javafx.scene.web.WebEngine;
-import netscape.javascript.JSObject;
-import org.roxycode.gui.MarkdownRenderer;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.Stage;
 import jakarta.inject.Inject;
 import java.io.File;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import org.roxycode.gui.events.*;
 import org.roxycode.jsmashy.core.RepositoryScanner;
 import org.roxycode.jsmashy.core.ProjectFile;
 import org.roxycode.jsmashy.formatters.XmlSmashFormatter;
@@ -37,10 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Controller for the Codebase Chat screen.
+ * Controller for the Codebase Chat screen, refactored for Event-Driven Architecture.
  */
-@Prototype
+@Singleton
 public class CodebaseChatController {
+
     private static final Logger LOG = LoggerFactory.getLogger(CodebaseChatController.class);
 
     @FXML
@@ -58,7 +43,6 @@ public class CodebaseChatController {
     @FXML
     private WebView chatWebView;
 
-
     @FXML
     private TextField chatInput;
 
@@ -75,258 +59,304 @@ public class CodebaseChatController {
     private ProjectService projectService;
 
     @Inject
-    private io.micronaut.context.ApplicationContext context;
+    private ChatService chatService;
 
     @Inject
     private AgentScriptService agentScriptService;
 
-    private File selectedDirectory;
-
     private Chat chat;
+
+    private WebEngine webEngine;
 
     private MarkdownRenderer markdownRenderer = new MarkdownRenderer();
 
-    private WebEngine webEngine;
+    private StringBuilder aiResponseBuffer = new StringBuilder();
+
+    private boolean webViewLoaded = false;
+
+    private final List<String> pendingScripts = new ArrayList<>();
 
     @FXML
     public void initialize() {
         webEngine = chatWebView.getEngine();
-        webEngine.loadContent("<html><head><link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'><script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script><style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #2f3542; background-color: transparent; margin: 0; padding: 15px; } .message-container { margin-bottom: 20px; display: flex; flex-direction: column; } .user-message-container { align-items: flex-end; } .ai-message-container { align-items: flex-start; } .bubble { padding: 10px 15px; border-radius: 15px; max-width: 85%; word-wrap: break-word; } .user-bubble { background-color: #3498db; color: white; } .ai-bubble { background-color: #f1f2f6; color: #2f3542; border: 1px solid #dfe4ea; } .system-bubble { font-style: italic; color: #747d8c; align-self: center; } pre { background-color: #f8f9fa; padding: 10px; border-radius: 8px; overflow-x: auto; border: 1px solid #dfe4ea; } code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.9em; }</style></head><body><div id='chat-history'></div></body></html>");
+        String visibility = geminiService.getPrefs().get(SettingsController.THOUGHTS_VISIBILITY, SettingsController.THOUGHTS_SHOW_COLLAPSED);
+        // Migration logic for old preference values
+        if ("Don't Show".equals(visibility)) visibility = SettingsController.THOUGHTS_DONT_SHOW;
+        else if ("Show Collapsed".equals(visibility)) visibility = SettingsController.THOUGHTS_SHOW_COLLAPSED;
+        else if ("Show Full".equals(visibility)) visibility = SettingsController.THOUGHTS_SHOW_FULL;
+
+        webEngine.loadContent(getInitialHtml(visibility));
         webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
             if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
+                webViewLoaded = true;
+                flushPendingScripts();
                 restoreSession();
                 Platform.runLater(() -> {
-                    agentComboBox.getItems().addAll(agentService.getAgents());
+                    agentComboBox.getItems().setAll(agentService.getAgents());
                     if (!agentComboBox.getItems().isEmpty()) {
                         agentComboBox.getSelectionModel().select(0);
                     }
                 });
             }
         });
-        // Restore project path if available
         String savedPath = projectService.getProjectPath();
         if (savedPath != null) {
             File dir = new File(savedPath);
             if (dir.exists() && dir.isDirectory()) {
-                selectedDirectory = dir;
                 pathLabel.setText(dir.getAbsolutePath());
                 updateCodebaseStats(dir);
-                
             }
         }
     }
 
-    private void restoreSession() {
-        List<ChatMessage> history = projectService.getChatHistory();
-        String currentCache = projectService.getCurrentCacheName();
-        if (history.isEmpty()) {
-            if (currentCache != null) {
-                addMessage("System", "Restoring codebase session...", false);
-            } else {
-                addMessage("System", "Select a folder and cache it to start chatting.", false);
-            }
-        } else {
-            for (ChatMessage msg : history) {
-                addMessage(msg.sender(), msg.text(), false);
-            }
-        }
-        this.chat = projectService.getActiveChat();
-        if (this.chat != null) {
-            statusLabel.setText("Status: Ready");
-        } else if (currentCache != null) {
-            statusLabel.setText("Status: Reconnecting...");
-            CompletableFuture.runAsync(() -> {
-                try {
-                    String model = projectService.getCurrentCacheModel();
-                    if (model == null) model = geminiService.getPrefs().get(SettingsController.GEMINI_MODEL, SettingsController.DEFAULT_MODEL);
-                    geminiService.validateCache(currentCache);
-                    this.chat = geminiService.startChat(model, currentCache);
-                    projectService.setActiveChat(this.chat);
-                    Platform.runLater(() -> statusLabel.setText("Status: Ready"));
-                } catch (Exception e) {
-                    String msg = e.getMessage();
-                    String userMsg = "Session expired. Please re-cache the codebase.";
-                    if (msg != null) {
-                        if (msg.contains("403")) {
-                            userMsg = "Permission denied (403). Your API key may have changed or the cache is tied to another key. Please re-cache.";
-                        } else if (msg.contains("404")) {
-                            userMsg = "Cache not found (404). It may have expired. Please re-cache.";
-                        }
-                    }
-                    final String finalMsg = userMsg;
-                    Platform.runLater(() -> {
-                        statusLabel.setText("Status: Error");
-                        addMessage("System", finalMsg, true);
-                    });
-                }
-            });
-        }
-    }
-
-    private void addMessage(String sender, String text, boolean save) {
-        if (save) {
-            projectService.addChatMessage(sender, text);
-        }
-        // Correctly escape for JS string literal and HTML injection
-        String htmlContent = markdownRenderer.render(text).replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
-        String containerClass = "message-container ";
-        String bubbleClass = "bubble ";
-        if ("User".equals(sender)) {
-            containerClass += "user-message-container";
-            bubbleClass += "user-bubble";
-        } else if ("Gemini".equals(sender)) {
-            containerClass += "ai-message-container";
-            bubbleClass += "ai-bubble";
-        } else {
-            bubbleClass += "system-bubble";
-        }
-        String script = "(function() {" + "var historyElement = document.getElementById('chat-history');" + "var container = document.createElement('div');" + "container.className = '" + containerClass + "';" + "container.innerHTML = '<div class=\"" + bubbleClass + "\">' + '" + htmlContent + "' + '</div>';" + "if (historyElement) { historyElement.appendChild(container); }" + "if (typeof hljs !== 'undefined') { hljs.highlightAll(); }" + "window.scrollTo(0, document.body.scrollHeight);" + "})();";
+    @EventListener
+    public void onChatStatus(ChatStatusEvent event) {
+        LOG.debug("Received ChatStatusEvent: {}", event.status());
         Platform.runLater(() -> {
-            try {
-                webEngine.executeScript(script);
-            } catch (Exception e) {
-                System.err.println("Error executing script: " + e.getMessage());
-                // e.printStackTrace();
+            if (statusLabel != null) {
+                statusLabel.setText("Status: " + event.status());
+            }
+            if (event.status().startsWith("Error:")) {
+                addMessage("Error", event.status(), true);
             }
         });
     }
 
-    /**
-     * Handles the folder selection action.
-     */
+    @EventListener
+    public void onChatContent(ChatContentEvent event) {
+        LOG.debug("Received ChatContentEvent: textLength={}, isFinal={}", event.text().length(), event.isFinal());
+        Platform.runLater(() -> {
+            if (!event.text().isEmpty()) {
+                aiResponseBuffer.append(event.text());
+                streamToWebView("content", event.text(), false);
+            }
+            if (event.isFinal() && aiResponseBuffer.length() > 0) {
+                String fullText = aiResponseBuffer.toString();
+                projectService.addChatMessage("Gemini", fullText);
+                String fullHtml = markdownRenderer.render(fullText);
+                aiResponseBuffer.setLength(0);
+                streamToWebView("content", fullHtml, true);
+            }
+        });
+    }
+
+    @EventListener
+    public void onChatThought(ChatThoughtEvent event) {
+        LOG.debug("Received ChatThoughtEvent: textLength={}, isFinal={}", event.text().length(), event.isFinal());
+        streamToWebView("thought", event.text(), event.isFinal());
+    }
+
+    @EventListener
+    public void onChatUsage(ChatUsageEvent event) {
+        // Future use: display usage stats in UI
+    }
+
+    @FXML
+    private void handleSendMessage() {
+        String input = chatInput.getText();
+        if (input == null || input.trim().isEmpty())
+            return;
+        if (chat == null) {
+            addMessage("System", "Please select a folder and cache it before chatting.", false);
+            return;
+        }
+        LOG.info("Sending message: {}", input);
+        chatInput.clear();
+        // Ensure buffer is empty
+        aiResponseBuffer.setLength(0);
+        addMessage("User", input, true);
+        Agent agent = agentComboBox.getValue();
+        int maxTurns = geminiService.getPrefs().getInt(SettingsController.CONVERSATION_MAX_TURNS, SettingsController.DEFAULT_MAX_TURNS);
+        CompletableFuture.runAsync(() -> {
+            chatService.execute(input, agent, chat, maxTurns);
+        }).exceptionally(ex -> {
+            LOG.error("Failed to execute chat", ex);
+            Platform.runLater(() -> addMessage("System", "Error: " + ex.getMessage(), false));
+            return null;
+        });
+    }
+
+    private void addMessage(String sender, String text, boolean save) {
+        if (save)
+            projectService.addChatMessage(sender, text);
+        String htmlContent = escapeJs(markdownRenderer.render(text));
+        String containerClass = "message-container " + ("User".equals(sender) ? "user-message-container" : ("Gemini".equals(sender) ? "ai-message-container" : ""));
+        String bubbleClass = "bubble " + ("User".equals(sender) ? "user-bubble" : ("Gemini".equals(sender) ? "ai-bubble" : "system-bubble"));
+        String script = String.format("addMessage('%s', '%s', '%s')", containerClass, bubbleClass, htmlContent);
+        runScript(script);
+    }
+
+    private void streamToWebView(String type, String text, boolean isFinal) {
+        String escaped = escapeJs(text);
+        String script = String.format("streamToWebView('%s', '%s', %b)", type, escaped, isFinal);
+        runScript(script);
+    }
+
+    private void restoreSession() {
+        List<ChatMessage> history = projectService.getChatHistory();
+        for (ChatMessage msg : history) {
+            addMessage(msg.sender(), msg.text(), false);
+        }
+        this.chat = projectService.getActiveChat();
+        if (this.chat != null) {
+            statusLabel.setText("Status: Ready");
+        } else if (projectService.getCurrentCacheName() != null) {
+            reconnectSession();
+        }
+    }
+
+    private void reconnectSession() {
+        statusLabel.setText("Status: Reconnecting...");
+        CompletableFuture.runAsync(() -> {
+            try {
+                String cacheName = projectService.getCurrentCacheName();
+                String model = projectService.getCurrentCacheModel();
+                if (model == null)
+                    model = geminiService.getPrefs().get(SettingsController.GEMINI_MODEL, SettingsController.DEFAULT_MODEL);
+                geminiService.validateCache(cacheName);
+                this.chat = geminiService.startChat(model, cacheName);
+                projectService.setActiveChat(this.chat);
+                Platform.runLater(() -> statusLabel.setText("Status: Ready"));
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("Status: Error");
+                    addMessage("System", "Session expired or error: " + e.getMessage(), false);
+                });
+            }
+        });
+    }
+
     @FXML
     private void handleSelectFolder() {
-        DirectoryChooser directoryChooser = new DirectoryChooser();
-        directoryChooser.setTitle("Select Codebase Folder");
-        File dir = directoryChooser.showDialog(new Stage());
+        javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
+        File dir = dc.showDialog(null);
         if (dir != null) {
-            selectedDirectory = dir;
             pathLabel.setText(dir.getAbsolutePath());
-            
             projectService.setProjectPath(dir.getAbsolutePath());
             updateCodebaseStats(dir);
         }
     }
 
-    /**
-     * Handles the cache codebase action.
-     */
-
-
-
-    @FXML
-    private void handleSendMessage() {
-        String input = chatInput.getText();
-        if (input == null || input.trim().isEmpty()) {
-            return;
-        }
-        if (chat == null) {
-            if (projectService.getCurrentCacheName() != null) {
-                addMessage("System", "Still reconnecting to codebase session. Please wait a moment...", false);
-            } else {
-                addMessage("System", "Please select a folder and click 'Cache Codebase' before chatting.", false);
-            }
-            return;
-        }
-        chatInput.clear();
-        addMessage("User", input, true);
-        statusLabel.setText("Status: Thinking...");
-        
-        Agent selectedAgent = agentComboBox.getValue();
-        int maxTurns = geminiService.getPrefs().getInt(SettingsController.CONVERSATION_MAX_TURNS, SettingsController.DEFAULT_MAX_TURNS);
-
-        ChatLoop loop = new ChatLoop(chat, agentScriptService, maxTurns, new ChatLoop.Listener() {
-            @Override
-            public void onMessage(String sender, String text, boolean save) {
-                Platform.runLater(() -> addMessage(sender, text, save));
-            }
-
-            @Override
-            public void onStatus(String status) {
-                Platform.runLater(() -> statusLabel.setText("Status: " + status));
-            }
-
-            @Override
-            public void onTurn(int turn, int maxTurns) {
-                Platform.runLater(() -> statusLabel.setText("Status: Turn " + turn + "/" + maxTurns));
-            }
-
-            @Override
-            public void onComplete() {
-                Platform.runLater(() -> statusLabel.setText("Status: Ready"));
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                LOG.error("Error in handleSendMessage", error);
-                String errorMessage = error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName();
-                
-                String userFriendlyMessage = "Gemini Error: " + errorMessage;
-                if (errorMessage.contains("403")) {
-                    userFriendlyMessage = "Permission denied (403). Your API key may have changed or the cache is tied to another key. Please re-cache the codebase.";
-                } else if (errorMessage.contains("404")) {
-                    userFriendlyMessage = "Cache not found (404). It may have expired. Please re-cache the codebase.";
-                }
-
-                final String finalMsg = userFriendlyMessage;
-                Platform.runLater(() -> {
-                    addMessage("Error", finalMsg, true);
-                    statusLabel.setText("Status: Error");
-                });
-            }
-        });
-
-        loop.run(input, selectedAgent);
-    }
-
-
-
-
     private void updateCodebaseStats(File directory) {
-        if (directory == null || !directory.exists()) {
-            Platform.runLater(() -> {
-                sizeLabel.setText("");
-                tokenLabel.setText("");
-            });
-            return;
-        }
-
-        Platform.runLater(() -> {
-            sizeLabel.setText("Size: Calculating...");
-            tokenLabel.setText("Tokens: Calculating...");
-        });
-
         CompletableFuture.runAsync(() -> {
             try {
                 RepositoryScanner scanner = new RepositoryScanner();
                 List<ProjectFile> files = scanner.scan(directory.toPath());
-                XmlSmashFormatter formatter = new XmlSmashFormatter();
-                String xml = formatter.format(files);
-                
+                String xml = new XmlSmashFormatter().format(files);
                 long bytes = xml.length();
                 int tokens = (int) (bytes / SettingsController.BYTES_PER_TOKEN);
-                
-                String sizeStr = formatSize(bytes);
-                
                 Platform.runLater(() -> {
-                    sizeLabel.setText("Size: " + sizeStr);
-                    tokenLabel.setText("Tokens: " + String.format("%, d", tokens));
+                    if (sizeLabel != null)
+                        sizeLabel.setText("Size: " + formatSize(bytes));
+                    if (tokenLabel != null)
+                        tokenLabel.setText("Tokens: " + String.format("%,d", tokens));
                 });
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    sizeLabel.setText("Size: Error");
-                    tokenLabel.setText("Tokens: Error");
-                });
-                e.printStackTrace();
+            } catch (Exception ignored) {
             }
         });
     }
 
     private String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024)
+            return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
-        char pre = "KMGTPE".charAt(exp - 1);
-        return String.format("%.1f %cB", bytes / Math.pow(1024, exp), pre);
+        return String.format("%.1f %cB", bytes / Math.pow(1024, exp), "KMGTPE".charAt(exp - 1));
     }
 
+    private String getInitialHtml(String visibility) {
+        return """
+            <html><head>
+            <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>
+            <script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>
+            <style>
+            body { font-family: -apple-system, sans-serif; font-size: 14px; line-height: 1.5; color: #2f3542; padding: 15px; background: transparent; }
+            .message-container { margin-bottom: 20px; display: flex; flex-direction: column; }
+            .user-message-container { align-items: flex-end; }
+            .ai-message-container { align-items: flex-start; }
+            .bubble { padding: 10px 15px; border-radius: 15px; max-width: 85%; word-wrap: break-word; }
+            .user-bubble { background-color: #3498db; color: white; }
+            .ai-bubble { background-color: #f1f2f6; color: #2f3542; border: 1px solid #dfe4ea; }
+            .system-bubble { font-style: italic; color: #747d8c; align-self: center; }
+            .thought-bubble { background-color: #f8f9fa; border-left: 4px solid #747d8c; padding: 8px; margin: 5px 0; border-radius: 4px; font-size: 0.9em; }
+            summary { font-weight: bold; cursor: pointer; color: #57606f; outline: none; }
+            pre { background: #f8f9fa; padding: 10px; border-radius: 8px; overflow-x: auto; border: 1px solid #dfe4ea; }
+            code { font-family: monospace; font-size: 0.9em; }
+            </style><script>
+            var currentAiMsgId = null; var currentThoughtId = null; var thoughtsVisibility = 'THOUGHTS_VISIBILITY_PLACEHOLDER';
+            function addMessage(containerClass, bubbleClass, html) {
+              var history = document.getElementById('chat-history');
+              var c = document.createElement('div'); c.className = containerClass;
+              c.innerHTML = '<div class="' + bubbleClass + '">' + html + '</div>';
+              history.appendChild(c); if (typeof hljs !== 'undefined') hljs.highlightAll();
+              window.scrollTo(0, document.body.scrollHeight);
+            }
+            function streamToWebView(type, text, isFinal) {
+              var history = document.getElementById('chat-history');
+              if (type === 'thought') {
+                if (thoughtsVisibility === 'NONE') return;
+                if (!text && !isFinal) return;
+                if (!currentThoughtId) {
+                  currentThoughtId = 't' + Date.now();
+                  var d = document.createElement('details'); d.id = currentThoughtId; d.className = 'thought-bubble';
+                  if (thoughtsVisibility === 'FULL') d.open = true;
+                  d.innerHTML = '<summary>Thought Process</summary><div class="thought-content"></div>'; history.appendChild(d);
+                }
+                if (text) {
+                  document.getElementById(currentThoughtId).querySelector('.thought-content').innerText += text;
+                }
+                if (isFinal) {
+                  var container = document.getElementById(currentThoughtId);
+                  if (container && !container.querySelector('.thought-content').innerText.trim()) {
+                    container.remove();
+                  }
+                  currentThoughtId = null;
+                }
+              } else if (type === 'content') {
+                if (!currentAiMsgId) {
+                  currentAiMsgId = 'a' + Date.now();
+                  var c = document.createElement('div'); c.className = 'message-container ai-message-container';
+                  c.innerHTML = '<div id="' + currentAiMsgId + '" class="bubble ai-bubble"></div>'; history.appendChild(c);
+                }
+                var b = document.getElementById(currentAiMsgId);
+                if (isFinal) { b.innerHTML = text; currentAiMsgId = null; if (typeof hljs !== 'undefined') hljs.highlightAll(); }
+                else { b.innerText += text; }
+              }
+              window.scrollTo(0, document.body.scrollHeight);
+            }
+            </script></head><body><div id='chat-history'></div></body></html>
+            """.replace("THOUGHTS_VISIBILITY_PLACEHOLDER", escapeJs(visibility));
+    }
+
+    static String escapeJs(String text) {
+        if (text == null)
+            return "";
+        return text.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "").replace("\b", "\\b").replace("\f", "\\f");
+    }
+
+    private void runScript(String script) {
+        Platform.runLater(() -> {
+            if (!webViewLoaded) {
+                LOG.debug("WebView not loaded, queuing script");
+                pendingScripts.add(script);
+                return;
+            }
+            try {
+                webEngine.executeScript(script);
+            } catch (Exception e) {
+                LOG.error("Failed to execute script: " + script, e);
+            }
+        });
+    }
+
+    private void flushPendingScripts() {
+        LOG.debug("Flushing {} pending scripts", pendingScripts.size());
+        for (String script : pendingScripts) {
+            try {
+                webEngine.executeScript(script);
+            } catch (Exception e) {
+                LOG.error("Failed to execute pending script: " + script, e);
+            }
+        }
+        pendingScripts.clear();
+    }
 }

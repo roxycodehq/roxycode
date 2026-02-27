@@ -9,4 +9,4 @@ target/
 .classpath
 .factorypath
 .env
-roxy/cache/
+**/roxy/cache/

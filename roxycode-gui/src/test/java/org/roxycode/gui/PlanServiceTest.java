@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @MicronautTest
+@io.micronaut.context.annotation.Property(name = "roxycode.preferences.path", value = "org/roxycode/gui/test/PlanServiceTest")
 class PlanServiceTest {
 
     @Inject
@@ -24,6 +25,18 @@ class PlanServiceTest {
 
     @Inject
     ProjectService projectService;
+
+    @Inject
+    java.util.prefs.Preferences prefs;
+
+    @AfterEach
+    void tearDown() throws java.util.prefs.BackingStoreException {
+        if (prefs != null && prefs.nodeExists("")) {
+            prefs.clear();
+            prefs.removeNode();
+            prefs.flush();
+        }
+    }
 
     @TempDir
     Path tempDir;

@@ -68,6 +68,11 @@
                             <TextField fx:id="maxTurnsField" promptText="5" styleClass="modern-text-field"/>
                             <Label text="Number of automated turns an agent will take." style="-fx-font-size: 10px; -fx-text-fill: #747d8c;"/>
                         </VBox>
+                        <VBox spacing="5">
+                            <Label text="Thoughts Visibility" styleClass="status-label"/>
+                            <ComboBox fx:id="thoughtsComboBox" maxWidth="Infinity" styleClass="modern-text-field"/>
+                            <Label text="Choose how AI thought processes are displayed." style="-fx-font-size: 10px; -fx-text-fill: #747d8c;"/>
+                        </VBox>
                     </VBox>
                 </content>
             </Tab>
