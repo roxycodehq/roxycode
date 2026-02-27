@@ -59,18 +59,25 @@ public class CacheListController {
 
     @FXML
     private Label localProjectPathLabel;
+
     @FXML
     private Label localCachePathLabel;
+
     @FXML
     private Label localCacheTimeLabel;
+
     @FXML
     private Label localCacheSizeLabel;
+
     @FXML
     private Label localTokensLabel;
+
     @FXML
     private WebView contentWebView;
+
     @FXML
     private Label localStatusLabel;
+
     @FXML
     private Button cacheButton;
 
@@ -80,9 +87,10 @@ public class CacheListController {
         createTimeColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().createTime()));
         expireTimeColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().expireTime()));
         tokensColumn.setCellValueFactory(data -> new SimpleLongProperty(data.getValue().totalTokens()));
-
         actionsColumn.setCellFactory(col -> new TableCell<>() {
+
             private final Button deleteBtn = new Button("Delete");
+
             {
                 deleteBtn.getStyleClass().add("delete-button");
                 deleteBtn.setOnAction(e -> {
@@ -97,44 +105,33 @@ public class CacheListController {
                 setGraphic(empty ? null : deleteBtn);
             }
         });
-
         refresh();
-        
         // Bind local cache info
-        localProjectPathLabel.textProperty().bind(Bindings.createStringBinding(
-            () -> {
-                String path = projectService.getProjectPath();
-                return path != null ? path : "No project selected";
-            },
-            projectService.projectPathProperty()
-        ));
-        
+        localProjectPathLabel.textProperty().bind(Bindings.createStringBinding(() -> {
+            String path = projectService.getProjectPath();
+            return path != null ? path : "No project selected";
+        }, projectService.projectPathProperty()));
         cacheButton.disableProperty().bind(projectService.projectPathProperty().isNull());
-        
         localCachePathLabel.textProperty().bind(projectService.localCachePathProperty());
         localCacheSizeLabel.textProperty().bind(projectService.localCacheSizeProperty());
         localCacheTimeLabel.textProperty().bind(projectService.localCacheTimeProperty());
         localTokensLabel.textProperty().bind(projectService.localCacheTokensProperty());
-        
         projectService.localCachePathProperty().addListener((obs, oldVal, newVal) -> {
             updateContentPreview();
         });
-        
         updateContentPreview();
     }
 
     private void updateContentPreview() {
         String pathStr = projectService.getProjectPath();
         if (pathStr == null) {
-             if (contentWebView != null) {
+            if (contentWebView != null) {
                 Platform.runLater(() -> contentWebView.getEngine().loadContent("<html><body>No project selected</body></html>"));
             }
             return;
         }
-
-        Path cachePath = Paths.get(pathStr, ".roxy", "codebase_cache.xml");
+        Path cachePath = Paths.get(pathStr, ProjectService.ROXY_DIR, ProjectService.CACHE_DIR, ProjectService.CACHE_FILE);
         File cacheFile = cachePath.toFile();
-
         if (cacheFile.exists()) {
             try {
                 long bytes = cacheFile.length();
@@ -164,16 +161,7 @@ public class CacheListController {
         new Thread(() -> {
             try {
                 List<CachedContent> caches = geminiService.listCaches();
-                List<CacheRow> rows = caches.stream()
-                        .map(c -> new CacheRow(
-                                c.name().orElse(""),
-                                c.displayName().orElse(c.name().orElse("Unnamed")),
-                                c.createTime().map(Object::toString).orElse("-"),
-                                c.expireTime().map(Object::toString).orElse("-"),
-                                c.usageMetadata().flatMap(um -> um.totalTokenCount()).orElse(0)
-                        ))
-                        .collect(Collectors.toList());
-
+                List<CacheRow> rows = caches.stream().map(c -> new CacheRow(c.name().orElse(""), c.displayName().orElse(c.name().orElse("Unnamed")), c.createTime().map(Object::toString).orElse("-"), c.expireTime().map(Object::toString).orElse("-"), c.usageMetadata().flatMap(um -> um.totalTokenCount()).orElse(0))).collect(Collectors.toList());
                 Platform.runLater(() -> {
                     cacheTable.setItems(FXCollections.observableArrayList(rows));
                 });
@@ -194,66 +182,43 @@ public class CacheListController {
         }).start();
     }
 
-    public record CacheRow(
-            String resourceName,
-            String displayName,
-            String createTime,
-            String expireTime,
-            long totalTokens
-    ) {}
+    public record CacheRow(String resourceName, String displayName, String createTime, String expireTime, long totalTokens) {
+    }
 
     private void loadHighlightedContent(String content) {
-        if (contentWebView == null) return;
-        
-        String escaped = content.replace("&", "&amp;")
-                               .replace("<", "&lt;")
-                               .replace(">", "&gt;")
-                               .replace("\"", "&quot;")
-                               .replace("'", "&#39;");
-
-        String html = "<html><head>" +
-                "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>" +
-                "<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>" +
-                "<style>body { margin: 0; background: #f8f9fa; } pre { margin: 0; padding: 15px; font-family: monospace; font-size: 12px; }</style>" +
-                "</head><body>" +
-                "<pre><code class='language-xml'>" + escaped + "</code></pre>" +
-                "<script>hljs.highlightAll();</script>" +
-                "</body></html>";
-
+        if (contentWebView == null)
+            return;
+        String escaped = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+        String html = "<html><head>" + "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>" + "<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>" + "<style>body { margin: 0; background: #f8f9fa; } pre { margin: 0; padding: 15px; font-family: monospace; font-size: 12px; }</style>" + "</head><body>" + "<pre><code class='language-xml'>" + escaped + "</code></pre>" + "<script>hljs.highlightAll();</script>" + "</body></html>";
         Platform.runLater(() -> contentWebView.getEngine().loadContent(html));
     }
 
     @FXML
     private void handleCacheCodebase() {
         String pathStr = projectService.getProjectPath();
-        if (pathStr == null) return;
-        
+        if (pathStr == null)
+            return;
         File selectedDirectory = new File(pathStr);
         localStatusLabel.setText("Status: Scanning...");
-        
         CompletableFuture.runAsync(() -> {
             try {
                 RepositoryScanner scanner = new RepositoryScanner();
                 List<ProjectFile> files = scanner.scan(selectedDirectory.toPath());
                 Platform.runLater(() -> localStatusLabel.setText("Status: Formatting..."));
                 XmlSmashFormatter formatter = new XmlSmashFormatter();
-                
                 String xml = formatter.format(files);
-                
-                // Save to .roxy/codebase_cache.xml
+                // Save to roxy/cache/codebase_cache.xml
                 try {
-                    Path roxyDir = selectedDirectory.toPath().resolve(".roxy");
-                    if (!Files.exists(roxyDir)) {
-                        Files.createDirectories(roxyDir);
+                    Path cacheDir = selectedDirectory.toPath().resolve(ProjectService.ROXY_DIR).resolve(ProjectService.CACHE_DIR);
+                    if (!Files.exists(cacheDir)) {
+                        Files.createDirectories(cacheDir);
                     }
-                    Files.writeString(roxyDir.resolve("codebase_cache.xml"), xml);
+                    Files.writeString(cacheDir.resolve(ProjectService.CACHE_FILE), xml);
                 } catch (Exception e) {
                     System.err.println("Failed to save local cache: " + e.getMessage());
                 }
-                
                 // Refresh ProjectService metadata
                 projectService.refreshLocalCacheInfo();
-
                 // Token estimation check
                 int minTokens = geminiService.getPrefs().getInt(SettingsController.CACHE_MIN_TOKENS, SettingsController.DEFAULT_MIN_TOKENS);
                 int estimatedTokens = (int) (xml.length() / SettingsController.BYTES_PER_TOKEN);
@@ -263,14 +228,12 @@ public class CacheListController {
                     });
                     return;
                 }
-                
                 Platform.runLater(() -> localStatusLabel.setText("Status: Caching..."));
                 String model = geminiService.getPrefs().get(SettingsController.GEMINI_MODEL, SettingsController.DEFAULT_MODEL);
                 CachedContent cache = geminiService.createCodebaseCache(xml, selectedDirectory.getName());
                 String cacheName = cache.name().get();
                 projectService.setCurrentCacheModel(model);
                 projectService.setCurrentCacheName(cacheName);
-                
                 // Refresh both
                 refresh();
                 Platform.runLater(() -> {
@@ -284,5 +247,4 @@ public class CacheListController {
             }
         });
     }
-
 }

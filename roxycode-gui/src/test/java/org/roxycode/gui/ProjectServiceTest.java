@@ -14,7 +14,9 @@ import org.junit.jupiter.api.Assertions;
 class ProjectServiceTest {
 
     private Preferences prefs;
+
     private ProjectService projectService;
+
     private static final String TEST_PREF_PATH = "org/roxycode/gui/test/ProjectServiceTest";
 
     @TempDir
@@ -39,20 +41,16 @@ class ProjectServiceTest {
     @Test
     void testLocalCacheInfoRefresh() throws IOException {
         projectService.setProjectPath(tempDir.toString());
-        
         // Initially should be not found
         projectService.refreshLocalCacheInfo();
         Assertions.assertEquals("Not found", projectService.localCachePathProperty().get());
-        
         // Create dummy cache file
-        Path roxyDir = tempDir.resolve(".roxy");
+        Path roxyDir = tempDir.resolve(ProjectService.ROXY_DIR).resolve(ProjectService.CACHE_DIR);
         Files.createDirectories(roxyDir);
-        Path cacheFile = roxyDir.resolve("codebase_cache.xml");
+        Path cacheFile = roxyDir.resolve(ProjectService.CACHE_FILE);
         String content = "dummy content";
         Files.writeString(cacheFile, content);
-        
         projectService.refreshLocalCacheInfo();
-        
         Assertions.assertEquals(cacheFile.toAbsolutePath().toString(), projectService.localCachePathProperty().get());
         Assertions.assertNotEquals("-", projectService.localCacheSizeProperty().get());
         Assertions.assertNotEquals("-", projectService.localCacheTimeProperty().get());
@@ -63,7 +61,6 @@ class ProjectServiceTest {
     void testProjectChangeClearsSession() {
         projectService.setProjectPath("/path/1");
         projectService.setCurrentCacheName("cache1");
-        
         projectService.setProjectPath("/path/2");
         Assertions.assertNull(projectService.getCurrentCacheName());
     }

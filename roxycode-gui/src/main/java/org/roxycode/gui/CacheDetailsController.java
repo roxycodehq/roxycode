@@ -19,15 +19,19 @@ public class CacheDetailsController {
 
     @FXML
     private Label pathLabel;
+
     @FXML
     private Label sizeLabel;
+
     @FXML
     private Label timeLabel;
+
     @FXML
     private WebView contentWebView;
 
     @Inject
     private ProjectService projectService;
+
     @Inject
     private ApplicationContext context;
 
@@ -36,7 +40,6 @@ public class CacheDetailsController {
         pathLabel.textProperty().bind(projectService.localCachePathProperty());
         sizeLabel.textProperty().bind(projectService.localCacheSizeProperty());
         timeLabel.textProperty().bind(projectService.localCacheTimeProperty());
-        
         projectService.localCachePathProperty().addListener((obs, oldVal, newVal) -> updateContentPreview());
         updateContentPreview();
     }
@@ -47,10 +50,8 @@ public class CacheDetailsController {
             contentWebView.getEngine().loadContent("<html><body>No project selected</body></html>");
             return;
         }
-
-        Path cachePath = Paths.get(projectPath, ".roxy", "codebase_cache.xml");
+        Path cachePath = Paths.get(projectPath, ProjectService.ROXY_DIR, ProjectService.CACHE_DIR, ProjectService.CACHE_FILE);
         File file = cachePath.toFile();
-
         if (file.exists()) {
             try {
                 // Load content (limit to 1MB)
@@ -65,9 +66,7 @@ public class CacheDetailsController {
                 } else {
                     content = Files.readString(cachePath);
                 }
-                
                 loadHighlightedContent(content);
-
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -77,20 +76,8 @@ public class CacheDetailsController {
     }
 
     private void loadHighlightedContent(String content) {
-        String escaped = content.replace("&", "&amp;")
-                               .replace("<", "&lt;")
-                               .replace(">", "&gt;")
-                               .replace("\"", "&quot;")
-                               .replace("'", "&#39;");
-
-        String html = "<html><head>" +
-                "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>" +
-                "<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>" +
-                "<style>body { margin: 0; background: #f8f9fa; } pre { margin: 0; padding: 15px; font-family: monospace; font-size: 12px; }</style>" +
-                "</head><body>" +
-                "<pre><code class='language-xml'>" + escaped + "</code></pre>" +
-                "<script>hljs.highlightAll();</script>" +
-                "</body></html>";
+        String escaped = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+        String html = "<html><head>" + "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'>" + "<script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js'></script>" + "<style>body { margin: 0; background: #f8f9fa; } pre { margin: 0; padding: 15px; font-family: monospace; font-size: 12px; }</style>" + "</head><body>" + "<pre><code class='language-xml'>" + escaped + "</code></pre>" + "<script>hljs.highlightAll();</script>" + "</body></html>";
         contentWebView.getEngine().loadContent(html);
     }
 

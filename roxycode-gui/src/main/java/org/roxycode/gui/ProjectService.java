@@ -8,7 +8,6 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,28 +27,48 @@ import java.util.prefs.Preferences;
 public class ProjectService {
 
     public static final String CURRENT_PROJECT_KEY = "current_project_path";
+
     public static final String CURRENT_CACHE_KEY = "current_cache_name";
+
     public static final String CURRENT_CACHE_MODEL_KEY = "current_cache_model";
 
+    public static final String ROXY_DIR = "roxy";
+
+    public static final String CONFIG_DIR = "config";
+
+    public static final String CACHE_DIR = "cache";
+
+    public static final String CACHE_FILE = "codebase_cache.xml";
+
     private final StringProperty projectPath = new SimpleStringProperty();
+
     private final Preferences prefs;
 
     // System Information Properties
     private final StringProperty osName = new SimpleStringProperty(System.getProperty("os.name"));
+
     private final StringProperty userName = new SimpleStringProperty(System.getProperty("user.name"));
+
     private final StringProperty javaVersion = new SimpleStringProperty(System.getProperty("java.version"));
+
     private final StringProperty gitBranch = new SimpleStringProperty("N/A");
 
     // Local Cache Metadata Properties
     private final StringProperty localCachePath = new SimpleStringProperty("-");
+
     private final StringProperty localCacheSize = new SimpleStringProperty("-");
+
     private final StringProperty localCacheTime = new SimpleStringProperty("-");
+
     private final StringProperty localCacheTokens = new SimpleStringProperty("-");
 
     // Session state
     private Chat activeChat;
+
     private final List<ChatMessage> chatHistory = new ArrayList<>();
+
     private final StringProperty currentCacheName = new SimpleStringProperty();
+
     private final StringProperty currentCacheModel = new SimpleStringProperty();
 
     @Inject
@@ -60,12 +79,10 @@ public class ProjectService {
         projectPath.set(savedPath);
         this.currentCacheName.set(prefs.get(CURRENT_CACHE_KEY, null));
         this.currentCacheModel.set(prefs.get(CURRENT_CACHE_MODEL_KEY, null));
-
         if (savedPath != null) {
             updateGitBranch(savedPath);
             refreshLocalCacheInfo();
         }
-
         // Save when changed and clear session
         projectPath.addListener((obs, oldVal, newVal) -> {
             if (newVal == null) {
@@ -73,12 +90,10 @@ public class ProjectService {
             } else {
                 prefs.put(CURRENT_PROJECT_KEY, newVal);
             }
-            
             // Clear session if project changes
             if (oldVal == null || !oldVal.equals(newVal)) {
                 clearSession();
             }
-
             updateGitBranch(newVal);
             refreshLocalCacheInfo();
         });
@@ -89,7 +104,6 @@ public class ProjectService {
             safeSetProperty(gitBranch, "N/A");
             return;
         }
-
         new Thread(() -> {
             try {
                 File gitDir = new File(path, ".git");
@@ -103,13 +117,8 @@ public class ProjectService {
                         gitDir = new File(current, ".git");
                     }
                 }
-
                 if (gitDir.exists()) {
-                    try (Repository repository = new FileRepositoryBuilder()
-                            .setGitDir(gitDir)
-                            .readEnvironment()
-                            .findGitDir()
-                            .build()) {
+                    try (Repository repository = new FileRepositoryBuilder().setGitDir(gitDir).readEnvironment().findGitDir().build()) {
                         String branch = repository.getBranch();
                         safeSetProperty(gitBranch, branch);
                     }
@@ -131,22 +140,17 @@ public class ProjectService {
             safeSetProperty(localCacheTokens, "-");
             return;
         }
-
-        Path cachePath = Paths.get(pathStr, ".roxy", "codebase_cache.xml");
+        Path cachePath = Paths.get(pathStr, ROXY_DIR, CACHE_DIR, CACHE_FILE);
         File cacheFile = cachePath.toFile();
-
         if (cacheFile.exists()) {
             long bytes = cacheFile.length();
             String sizeStr = formatSize(bytes);
             int estimatedTokens = (int) (bytes / SettingsController.BYTES_PER_TOKEN);
             String tokensStr = String.format("%,d", estimatedTokens);
-
             try {
                 BasicFileAttributes attrs = Files.readAttributes(cachePath, BasicFileAttributes.class);
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                        .withZone(ZoneId.systemDefault());
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
                 String timeStr = formatter.format(attrs.creationTime().toInstant());
-
                 safeSetProperty(localCachePath, cacheFile.getAbsolutePath());
                 safeSetProperty(localCacheSize, sizeStr);
                 safeSetProperty(localCacheTime, timeStr);
@@ -177,7 +181,8 @@ public class ProjectService {
     }
 
     private String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024)
+            return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         char pre = "KMGTPE".charAt(exp - 1);
         return String.format("%.1f %cB", bytes / Math.pow(1024, exp), pre);
@@ -195,15 +200,37 @@ public class ProjectService {
         this.projectPath.set(path);
     }
 
-    public StringProperty osNameProperty() { return osName; }
-    public StringProperty userNameProperty() { return userName; }
-    public StringProperty javaVersionProperty() { return javaVersion; }
-    public StringProperty gitBranchProperty() { return gitBranch; }
+    public StringProperty osNameProperty() {
+        return osName;
+    }
 
-    public StringProperty localCachePathProperty() { return localCachePath; }
-    public StringProperty localCacheSizeProperty() { return localCacheSize; }
-    public StringProperty localCacheTimeProperty() { return localCacheTime; }
-    public StringProperty localCacheTokensProperty() { return localCacheTokens; }
+    public StringProperty userNameProperty() {
+        return userName;
+    }
+
+    public StringProperty javaVersionProperty() {
+        return javaVersion;
+    }
+
+    public StringProperty gitBranchProperty() {
+        return gitBranch;
+    }
+
+    public StringProperty localCachePathProperty() {
+        return localCachePath;
+    }
+
+    public StringProperty localCacheSizeProperty() {
+        return localCacheSize;
+    }
+
+    public StringProperty localCacheTimeProperty() {
+        return localCacheTime;
+    }
+
+    public StringProperty localCacheTokensProperty() {
+        return localCacheTokens;
+    }
 
     public Chat getActiveChat() {
         return activeChat;

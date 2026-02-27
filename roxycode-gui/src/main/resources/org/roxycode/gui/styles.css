@@ -223,3 +223,11 @@
     -fx-font-size: 12px;
     -fx-text-fill: -text-muted;
 }
+
+.nav-icon {
+    -fx-icon-color: -text-muted;
+}
+
+.nav-button.active .nav-icon {
+    -fx-icon-color: -white;
+}
