@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import atlantafx.base.theme.PrimerLight;
 
 import java.io.IOException;
 
@@ -24,6 +25,7 @@ public class RoxyCodeApp extends Application {
         
         Parent root = loader.load();
         Scene scene = new Scene(root, 640, 480);
+        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
         stage.setTitle("RoxyCode GUI");
         stage.setScene(scene);
         stage.show();
